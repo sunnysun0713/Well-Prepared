@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getTasksForDate } from '@/data/tasks';
-import { TaskCard } from './task-card';
+import { TaskCard } from '@/components/TaskCard';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 

@@ -7,7 +7,7 @@ interface Props {
   past: boolean;
 }
 
-/** 任务卡片:时间 + 标题/备注 + 完成状态 */
+/** 任务卡片:时间 + 标题/备注 + 完成状态(每日任务与日历模块共用) */
 export function TaskCard({ task, past }: Props) {
   return (
     <View style={[styles.card, past && styles.past]}>

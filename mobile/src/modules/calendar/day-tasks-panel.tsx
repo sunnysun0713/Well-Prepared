@@ -1,20 +1,41 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { getTasksForDate } from '@/data/tasks';
+import { TaskCard } from '@/components/TaskCard';
+
+const pad = (n: number) => String(n).padStart(2, '0');
 
 interface Props {
   date: Date;
 }
 
-/** 选中日期下方的「当日代办事项」面板:目前为空态占位,后续接入每日任务数据 */
+/** 选中日期下方的「当日代办事项」面板:展示每日任务模块中该日期的任务 */
 export function DayTasksPanel({ date }: Props) {
+  const tasks = getTasksForDate(date);
+
+  const now = new Date();
+  const isToday =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+  const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        {date.getMonth() + 1}月{date.getDate()}日 代办事项
+        {date.getMonth() + 1}月{date.getDate()}日 代办事项({tasks.length})
       </Text>
-      <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>暂无代办事项</Text>
-        <Text style={styles.emptyHint}>每日任务模块上线后,当天任务将显示在这里</Text>
-      </View>
+      {tasks.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>当天暂无代办事项</Text>
+          <Text style={styles.emptyHint}>可在「每日任务」模块中添加任务</Text>
+        </View>
+      ) : (
+        <View style={styles.list}>
+          {tasks.map((t) => (
+            <TaskCard key={t.id} task={t} past={isToday && t.time < nowHM} />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -33,6 +54,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
     marginBottom: 12,
+  },
+  list: {
+    gap: 8,
   },
   empty: {
     alignItems: 'center',

@@ -23,6 +23,7 @@ src/
   components/
     ModuleBar.tsx       # 顶部模块选择栏
     ModulePlaceholder.tsx
+    TaskCard.tsx        # 任务卡片(每日任务与日历共用)
 ```
 
 ### 新增模块
