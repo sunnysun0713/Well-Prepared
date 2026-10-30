@@ -2,17 +2,21 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DayTasksPanel } from './day-tasks-panel';
 import { MonthGrid } from './month-grid';
-import { YearMonthPicker } from './year-month-picker';
+import { WheelPickerModal } from './wheel-picker';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+const TODAY_YEAR = new Date().getFullYear();
+// 滚轮候选年份:今天前后 6 年
+const YEAR_OPTIONS = Array.from({ length: 13 }, (_, i) => String(TODAY_YEAR - 6 + i));
+const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => `${i + 1}月`);
 
-/** 日历模块主界面:最上方今天日期,中间切换月份,下方月历网格;点选日期后网格下方显示当日代办 */
+/** 日历模块主界面:最上方今天日期,中间年月滚轮切换,下方月历网格;点选日期后网格下方显示当日代办 */
 export function CalendarScreen() {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-11
   const [selected, setSelected] = useState<Date | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerKind, setPickerKind] = useState<'year' | 'month' | null>(null);
 
   const goPrevMonth = () => {
     if (viewMonth === 0) {
@@ -42,6 +46,12 @@ export function CalendarScreen() {
     }
   };
 
+  // 用箭头浏览可能超出滚轮年份范围,取 index 时夹在候选区间内
+  const yearIndex = Math.max(
+    0,
+    Math.min(YEAR_OPTIONS.length - 1, viewYear - (TODAY_YEAR - 6)),
+  );
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <Text style={styles.today}>
@@ -53,32 +63,28 @@ export function CalendarScreen() {
         <Pressable onPress={goPrevMonth} style={styles.arrowButton} hitSlop={8}>
           <Text style={styles.arrow}>‹</Text>
         </Pressable>
-        <Pressable
-          onPress={() => setPickerOpen(!pickerOpen)}
-          style={styles.monthTitleButton}
-          hitSlop={4}
-        >
-          <Text style={styles.monthTitle}>
-            {viewYear}年{viewMonth + 1}月
-          </Text>
-          <Text style={styles.dropdownCaret}>{pickerOpen ? '▴' : '▾'}</Text>
-        </Pressable>
+        <View style={styles.titleGroup}>
+          <Pressable
+            onPress={() => setPickerKind('year')}
+            hitSlop={4}
+            style={({ pressed }) => [styles.titleSegment, pressed && styles.pressed]}
+          >
+            <Text style={styles.monthTitle}>{viewYear}年</Text>
+            <Text style={styles.segmentCaret}>▾</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setPickerKind('month')}
+            hitSlop={4}
+            style={({ pressed }) => [styles.titleSegment, pressed && styles.pressed]}
+          >
+            <Text style={styles.monthTitle}>{viewMonth + 1}月</Text>
+            <Text style={styles.segmentCaret}>▾</Text>
+          </Pressable>
+        </View>
         <Pressable onPress={goNextMonth} style={styles.arrowButton} hitSlop={8}>
           <Text style={styles.arrow}>›</Text>
         </Pressable>
       </View>
-
-      {pickerOpen && (
-        <YearMonthPicker
-          year={viewYear}
-          month={viewMonth}
-          onPick={(y, m) => {
-            setViewYear(y);
-            setViewMonth(m);
-            setPickerOpen(false);
-          }}
-        />
-      )}
 
       <MonthGrid
         year={viewYear}
@@ -89,6 +95,29 @@ export function CalendarScreen() {
       />
 
       {selected && <DayTasksPanel date={selected} />}
+
+      <WheelPickerModal
+        visible={pickerKind === 'year'}
+        title="选择年份"
+        options={YEAR_OPTIONS}
+        value={yearIndex}
+        onConfirm={(idx) => {
+          setViewYear(TODAY_YEAR - 6 + idx);
+          setPickerKind(null);
+        }}
+        onCancel={() => setPickerKind(null)}
+      />
+      <WheelPickerModal
+        visible={pickerKind === 'month'}
+        title="选择月份"
+        options={MONTH_OPTIONS}
+        value={viewMonth}
+        onConfirm={(idx) => {
+          setViewMonth(idx);
+          setPickerKind(null);
+        }}
+        onCancel={() => setPickerKind(null)}
+      />
     </ScrollView>
   );
 }
@@ -130,20 +159,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
   },
-  monthTitleButton: {
+  titleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    minWidth: 150,
     justifyContent: 'center',
-    gap: 4,
-    minWidth: 110,
+  },
+  titleSegment: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   monthTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
   },
-  dropdownCaret: {
-    fontSize: 10,
+  segmentCaret: {
+    fontSize: 9,
     color: '#6B7280',
   },
 });
