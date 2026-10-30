@@ -102,6 +102,7 @@ export function WheelPicker({ options, value, onChange, width = 120 }: WheelPick
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         snapToInterval={ITEM_HEIGHT}
+        scrollEventThrottle={16}
         decelerationRate="fast"
         contentOffset={{ x: 0, y: value * ITEM_HEIGHT }}
         contentContainerStyle={styles.scrollContent}
