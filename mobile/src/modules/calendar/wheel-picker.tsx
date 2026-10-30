@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -33,6 +33,15 @@ export function WheelPicker({ options, value, onChange, width = 120 }: WheelPick
   const dragging = useRef(false);
   const lastOffset = useRef(value * ITEM_HEIGHT);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(false);
+
+  // contentOffset 在部分平台(如 Web)挂载时不生效,挂载后强制滚动到初始位置(仅一次)
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      scrollRef.current?.scrollTo({ y: value * ITEM_HEIGHT, animated: false });
+    }
+  }, [value]);
 
   const clearTimer = () => {
     if (settleTimer.current) {
