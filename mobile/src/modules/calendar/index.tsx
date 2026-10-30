@@ -57,6 +57,21 @@ export function CalendarScreen() {
     Math.min(YEAR_OPTIONS.length - 1, viewYear - FIRST_YEAR),
   );
 
+  /** 某年某月的天数:JS Date 自动处理大小月与闰年 */
+  const getDayCount = (yearIdx: number, monthIdx: number) =>
+    new Date(FIRST_YEAR + yearIdx, monthIdx + 1, 0).getDate();
+
+  // 日滚轮初始值:优先当前选中日期,否则当月为今天所在月时用今天,其余用 1 日
+  const selectedInView =
+    selected !== null &&
+    selected.getFullYear() === viewYear &&
+    selected.getMonth() === viewMonth;
+  const dayValue = selectedInView
+    ? selected.getDate() - 1
+    : viewYear === today.getFullYear() && viewMonth === today.getMonth()
+      ? today.getDate() - 1
+      : 0;
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <Text style={styles.today}>
@@ -76,7 +91,6 @@ export function CalendarScreen() {
           <Text style={styles.monthTitle}>
             {viewYear}年{viewMonth + 1}月
           </Text>
-          <Text style={styles.segmentCaret}>▾</Text>
         </Pressable>
         <Pressable onPress={goNextMonth} style={styles.arrowButton} hitSlop={8}>
           <Text style={styles.arrow}>›</Text>
@@ -95,14 +109,18 @@ export function CalendarScreen() {
 
       <WheelPickerModal
         visible={pickerOpen}
-        title="选择年月"
+        title="选择日期"
         yearOptions={YEAR_OPTIONS}
         monthOptions={MONTH_OPTIONS}
+        getDayCount={getDayCount}
         yearValue={yearIndex}
         monthValue={viewMonth}
-        onConfirm={(yearIdx, monthIdx) => {
-          setViewYear(FIRST_YEAR + yearIdx);
+        dayValue={dayValue}
+        onConfirm={(yearIdx, monthIdx, dayIdx) => {
+          const y = FIRST_YEAR + yearIdx;
+          setViewYear(y);
           setViewMonth(monthIdx);
+          setSelected(new Date(y, monthIdx, dayIdx + 1));
           setPickerOpen(false);
         }}
         onCancel={() => setPickerOpen(false)}
@@ -162,9 +180,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-  },
-  segmentCaret: {
-    fontSize: 9,
-    color: '#6B7280',
   },
 });

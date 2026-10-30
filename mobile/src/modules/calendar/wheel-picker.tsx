@@ -85,26 +85,33 @@ interface WheelPickerModalProps {
   title: string;
   yearOptions: string[];
   monthOptions: string[];
+  /** 根据年、月下标返回该月天数(自动处理闰年) */
+  getDayCount: (yearIndex: number, monthIndex: number) => number;
   yearValue: number;
   monthValue: number;
-  onConfirm: (yearIndex: number, monthIndex: number) => void;
+  /** 日下标(日 - 1) */
+  dayValue: number;
+  onConfirm: (yearIndex: number, monthIndex: number, dayIndex: number) => void;
   onCancel: () => void;
 }
 
-/** 年月选择弹窗:年份 + 月份双滚轮并排 */
+/** 年月日选择弹窗:年 / 月 / 日三个滚轮并排,日选项随所选年月联动 */
 export function WheelPickerModal({
   visible,
   title,
   yearOptions,
   monthOptions,
+  getDayCount,
   yearValue,
   monthValue,
+  dayValue,
   onConfirm,
   onCancel,
 }: WheelPickerModalProps) {
   const [prevVisible, setPrevVisible] = useState(visible);
   const [tempYear, setTempYear] = useState(yearValue);
   const [tempMonth, setTempMonth] = useState(monthValue);
+  const [tempDay, setTempDay] = useState(dayValue);
 
   // 弹窗打开/关闭切换时在渲染期间重置滚轮值(避免 effect 内 setState 的级联渲染)
   if (visible !== prevVisible) {
@@ -112,8 +119,14 @@ export function WheelPickerModal({
     if (visible) {
       setTempYear(yearValue);
       setTempMonth(monthValue);
+      setTempDay(dayValue);
     }
   }
+
+  // 根据当前所选年月生成日选项;年月变化时天数可能变少,把日夹到有效范围
+  const dayCount = getDayCount(tempYear, tempMonth);
+  const dayOptions = Array.from({ length: dayCount }, (_, i) => `${i + 1}日`);
+  const clampedDay = Math.min(tempDay, dayCount - 1);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
@@ -126,13 +139,21 @@ export function WheelPickerModal({
               options={yearOptions}
               value={tempYear}
               onChange={setTempYear}
-              width={116}
+              width={96}
             />
             <WheelPicker
               options={monthOptions}
               value={tempMonth}
               onChange={setTempMonth}
-              width={84}
+              width={72}
+            />
+            {/* 天数组变化时用 key 重挂载,让滚轮回到新的有效位置 */}
+            <WheelPicker
+              key={dayCount}
+              options={dayOptions}
+              value={clampedDay}
+              onChange={setTempDay}
+              width={72}
             />
           </View>
           <View style={styles.actions}>
@@ -141,7 +162,7 @@ export function WheelPickerModal({
             </Pressable>
             <Pressable
               style={[styles.button, styles.confirmButton]}
-              onPress={() => onConfirm(tempYear, tempMonth)}
+              onPress={() => onConfirm(tempYear, tempMonth, clampedDay)}
             >
               <Text style={styles.confirmText}>确定</Text>
             </Pressable>
@@ -160,7 +181,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    width: 280,
+    width: 300,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingVertical: 20,
@@ -175,7 +196,7 @@ const styles = StyleSheet.create({
   },
   wheelsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   window: {
     height: VISIBLE_COUNT * ITEM_HEIGHT,
@@ -196,14 +217,14 @@ const styles = StyleSheet.create({
     height: ITEM_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   itemText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#9CA3AF',
   },
   itemTextActive: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1F2937',
   },
