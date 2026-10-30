@@ -58,9 +58,11 @@ export function TaskCard({ task, past }: Props) {
         {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
       </View>
       {task.remindAdvanceMinutes != null && <Text style={styles.bell}>🔔</Text>}
-      <Text style={[styles.status, task.done && styles.statusDone]}>
-        {task.done ? '✓' : '○'}
-      </Text>
+      <Pressable onPress={() => updateTask(task.id, { done: !task.done })} hitSlop={8}>
+        <Text style={[styles.status, task.done && styles.statusDone]}>
+          {task.done ? '✓' : '○'}
+        </Text>
+      </Pressable>
       <Pressable onPress={() => setSettingsOpen(true)} hitSlop={8}>
         <Text style={styles.gear}>⚙️</Text>
       </Pressable>

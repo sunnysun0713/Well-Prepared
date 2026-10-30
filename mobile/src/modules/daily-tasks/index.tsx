@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useTasks } from '@/data/tasks-context';
 import { TaskCard } from '@/components/TaskCard';
+import { AddTaskModal } from './add-task-modal';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -31,6 +32,7 @@ function relativeLabel(date: Date, today: Date): string {
 export function DailyTasksScreen() {
   const [now, setNow] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [addOpen, setAddOpen] = useState(false);
   // 惰性初始化,实例稳定;不用 ref,避免渲染期读写
   const [slide] = useState(() => new Animated.Value(0));
 
@@ -119,6 +121,12 @@ export function DailyTasksScreen() {
           </View>
         </ScrollView>
       </Animated.View>
+
+      <Pressable style={styles.fab} onPress={() => setAddOpen(true)} hitSlop={8}>
+        <Text style={styles.fabText}>+</Text>
+      </Pressable>
+
+      <AddTaskModal visible={addOpen} date={selectedDate} onClose={() => setAddOpen(false)} />
     </View>
   );
 }
@@ -179,7 +187,29 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 24,
+    paddingBottom: 88,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  fabText: {
+    fontSize: 30,
+    lineHeight: 34,
+    color: '#FFFFFF',
+    fontWeight: '400',
   },
   sectionLabel: {
     fontSize: 13,

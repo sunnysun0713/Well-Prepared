@@ -20,7 +20,7 @@ src/
     task-import/        # 任务载入
   data/
     tasks.ts            # 任务数据层:Task 类型 + 示例数据
-    tasks-context.tsx   # 任务状态(React Context,内存存储,模块间实时联动)
+    tasks-context.tsx   # 任务状态(React Context + AsyncStorage 持久化)
   components/
     ModuleBar.tsx       # 顶部模块选择栏
     ModulePlaceholder.tsx
