@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +16,7 @@ const ACCENT = '#4F46E5';
 
 /** 闹钟提醒固定档位 */
 const REMINDER_PRESETS = [
-  { label: '准时提醒', minutes: 0 },
+  { label: '准时', minutes: 0 },
   { label: '提前10分钟', minutes: 10 },
   { label: '提前30分钟', minutes: 30 },
   { label: '提前1小时', minutes: 60 },
@@ -30,27 +31,29 @@ interface Props {
   onClose: () => void;
 }
 
-/** 任务设置弹窗:起止时间、备注、闹钟提醒(固定档位 + 自定义) */
+/** 任务设置弹窗,功能分行排列:任务名(改名)→ 时间 → 备注 → 闹钟提醒 */
 export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const { updateTask } = useTasks();
   const [prevVisible, setPrevVisible] = useState(visible);
+  const [title, setTitle] = useState(task.title);
   const [startTime, setStartTime] = useState(task.startTime);
   const [endTime, setEndTime] = useState(task.endTime);
   const [note, setNote] = useState(task.note ?? '');
   const [remind, setRemind] = useState<number | null>(task.remindAdvanceMinutes ?? null);
   const [customMinutes, setCustomMinutes] = useState('');
-  const [timeError, setTimeError] = useState('');
+  const [error, setError] = useState('');
 
   // 打开弹窗时重置为任务当前值(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
+      setTitle(task.title);
       setStartTime(task.startTime);
       setEndTime(task.endTime);
       setNote(task.note ?? '');
       setRemind(task.remindAdvanceMinutes ?? null);
       setCustomMinutes('');
-      setTimeError('');
+      setError('');
     }
   }
 
@@ -66,11 +69,17 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
   };
 
   const confirm = () => {
+    const t = title.trim();
+    if (!t) {
+      setError('请输入任务名');
+      return;
+    }
     if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime) || endTime <= startTime) {
-      setTimeError('时间格式应为 HH:mm,且结束时间晚于起始时间');
+      setError('时间格式应为 HH:mm,且结束时间晚于起始时间');
       return;
     }
     updateTask(task.id, {
+      title: t,
       startTime,
       endTime,
       note: note.trim() ? note.trim() : undefined,
@@ -81,10 +90,26 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>任务设置</Text>
-          <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>任务设置</Text>
+
+            {/* 第 1 行:任务名(改名) */}
+            <Text style={styles.label}>任务名</Text>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              style={styles.input}
+              placeholder="任务名"
+              placeholderTextColor="#9CA3AF"
+              maxLength={50}
+            />
+
+            {/* 第 2 行:时间 */}
             <Text style={styles.label}>时间</Text>
             <View style={styles.timeRow}>
               <TextInput
@@ -105,20 +130,21 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
                 maxLength={5}
               />
             </View>
-            {timeError ? <Text style={styles.error}>{timeError}</Text> : null}
 
+            {/* 第 3 行:备注 */}
             <Text style={styles.label}>备注</Text>
             <TextInput
               value={note}
               onChangeText={setNote}
-              style={styles.noteInput}
+              style={styles.input}
               placeholder="添加备注(显示在任务名下方)"
               placeholderTextColor="#9CA3AF"
               maxLength={100}
             />
 
+            {/* 第 4 行:闹钟提醒(每行 3 个档位,固定排布不溢出) */}
             <Text style={styles.label}>闹钟提醒</Text>
-            <View style={styles.chips}>
+            <View style={styles.chipGrid}>
               {REMINDER_PRESETS.map((p) => {
                 const active = remind === p.minutes;
                 return (
@@ -138,7 +164,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
                 style={[styles.chip, customActive && styles.chipActive]}
               >
                 <Text style={[styles.chipText, customActive && styles.chipTextActive]}>
-                  {customActive ? `自定义 · ${remind}分钟` : '自定义'}
+                  {customActive ? `自定义·${remind}分` : '自定义'}
                 </Text>
               </Pressable>
               {remind !== null && (
@@ -162,18 +188,20 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
                 <Text style={styles.applyText}>应用</Text>
               </Pressable>
             </View>
-          </ScrollView>
 
-          <View style={styles.actions}>
-            <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
-              <Text style={styles.cancelText}>取消</Text>
-            </Pressable>
-            <Pressable style={[styles.button, styles.confirmButton]} onPress={confirm}>
-              <Text style={styles.confirmText}>确定</Text>
-            </Pressable>
-          </View>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <View style={styles.actions}>
+              <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
+                <Text style={styles.cancelText}>取消</Text>
+              </Pressable>
+              <Pressable style={[styles.button, styles.confirmButton]} onPress={confirm}>
+                <Text style={styles.confirmText}>确定</Text>
+              </Pressable>
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -186,28 +214,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    width: 320,
-    maxHeight: '85%',
+    width: 300,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  title: {
-    fontSize: 16,
+  modalTitle: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 12,
-  },
-  body: {
-    flexGrow: 0,
+    marginBottom: 8,
   },
   label: {
     fontSize: 12,
     color: '#9CA3AF',
-    marginBottom: 6,
+    marginBottom: 4,
     marginTop: 8,
+  },
+  input: {
+    height: 36,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    fontSize: 14,
+    color: '#1F2937',
   },
   timeRow: {
     flexDirection: 'row',
@@ -216,12 +250,12 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     flex: 1,
-    height: 40,
+    height: 36,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 15,
+    paddingHorizontal: 10,
+    fontSize: 14,
     color: '#1F2937',
     textAlign: 'center',
   },
@@ -229,36 +263,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B7280',
   },
-  error: {
-    fontSize: 12,
-    color: '#DC2626',
-    marginTop: 4,
-  },
-  noteInput: {
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    color: '#1F2937',
-  },
-  chips: {
+  chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    rowGap: 8,
   },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
+    width: '31.5%',
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipActive: {
     backgroundColor: ACCENT,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     color: '#374151',
   },
@@ -272,18 +295,18 @@ const styles = StyleSheet.create({
   },
   customInput: {
     flex: 1,
-    height: 36,
+    height: 32,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 14,
+    paddingHorizontal: 10,
+    fontSize: 13,
     color: '#1F2937',
   },
   applyButton: {
-    paddingHorizontal: 14,
-    height: 36,
-    borderRadius: 18,
+    paddingHorizontal: 12,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -293,15 +316,20 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#374151',
   },
+  error: {
+    fontSize: 12,
+    color: '#DC2626',
+    marginTop: 6,
+  },
   actions: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 16,
+    marginTop: 10,
   },
   button: {
     flex: 1,
-    height: 40,
-    borderRadius: 20,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -312,12 +340,12 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
   },
   cancelText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: '#374151',
   },
   confirmText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: '#FFFFFF',
   },

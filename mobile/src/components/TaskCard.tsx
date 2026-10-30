@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { TaskSettingsModal } from './TaskSettingsModal';
@@ -10,28 +10,10 @@ interface Props {
   past: boolean;
 }
 
-/** 任务卡片:起止时间 + 可编辑标题/备注 + 提醒标记 + 设置入口 */
+/** 任务卡片:起止时间 + 标题/备注 + 提醒标记 + 完成状态 + 设置入口 */
 export function TaskCard({ task, past }: Props) {
   const { updateTask } = useTasks();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(task.title);
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  const startEdit = () => {
-    setDraft(task.title);
-    setEditing(true);
-  };
-
-  /** 提交标题修改,空标题回退为原标题 */
-  const commitEdit = () => {
-    const t = draft.trim();
-    if (t) {
-      updateTask(task.id, { title: t });
-    } else {
-      setDraft(task.title);
-    }
-    setEditing(false);
-  };
 
   return (
     <View style={[styles.card, past && styles.past]}>
@@ -39,22 +21,7 @@ export function TaskCard({ task, past }: Props) {
         {task.startTime}–{task.endTime}
       </Text>
       <View style={styles.body}>
-        {editing ? (
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            onBlur={commitEdit}
-            onSubmitEditing={commitEdit}
-            autoFocus
-            selectTextOnFocus
-            maxLength={50}
-            style={styles.titleInput}
-          />
-        ) : (
-          <Pressable onPress={startEdit} hitSlop={4}>
-            <Text style={[styles.title, task.done && styles.titleDone]}>{task.title}</Text>
-          </Pressable>
-        )}
+        <Text style={[styles.title, task.done && styles.titleDone]}>{task.title}</Text>
         {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
       </View>
       {task.remindAdvanceMinutes != null && <Text style={styles.bell}>🔔</Text>}
@@ -110,14 +77,6 @@ const styles = StyleSheet.create({
   titleDone: {
     textDecorationLine: 'line-through',
     color: '#9CA3AF',
-  },
-  titleInput: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1F2937',
-    padding: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#4F46E5',
   },
   note: {
     fontSize: 12,
