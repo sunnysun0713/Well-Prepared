@@ -22,10 +22,12 @@ interface WheelPickerProps {
   /** 初始选中下标 */
   value: number;
   onChange: (index: number) => void;
+  /** 滚轮窗口宽度 */
+  width?: number;
 }
 
 /** 滚轮选择器:可滑动吸附,也可直接点选项 */
-export function WheelPicker({ options, value, onChange }: WheelPickerProps) {
+export function WheelPicker({ options, value, onChange, width = 120 }: WheelPickerProps) {
   const scrollRef = useRef<ScrollViewInstance>(null);
   const [selected, setSelected] = useState(value);
 
@@ -50,7 +52,7 @@ export function WheelPicker({ options, value, onChange }: WheelPickerProps) {
   };
 
   return (
-    <View style={styles.window}>
+    <View style={[styles.window, { width }]}>
       <View pointerEvents="none" style={styles.band} />
       <ScrollView
         ref={scrollRef}
@@ -81,29 +83,35 @@ export function WheelPicker({ options, value, onChange }: WheelPickerProps) {
 interface WheelPickerModalProps {
   visible: boolean;
   title: string;
-  options: string[];
-  value: number;
-  onConfirm: (index: number) => void;
+  yearOptions: string[];
+  monthOptions: string[];
+  yearValue: number;
+  monthValue: number;
+  onConfirm: (yearIndex: number, monthIndex: number) => void;
   onCancel: () => void;
 }
 
-/** 滚轮选择弹窗:标题 + 滚轮 + 取消/确定 */
+/** 年月选择弹窗:年份 + 月份双滚轮并排 */
 export function WheelPickerModal({
   visible,
   title,
-  options,
-  value,
+  yearOptions,
+  monthOptions,
+  yearValue,
+  monthValue,
   onConfirm,
   onCancel,
 }: WheelPickerModalProps) {
   const [prevVisible, setPrevVisible] = useState(visible);
-  const [temp, setTemp] = useState(value);
+  const [tempYear, setTempYear] = useState(yearValue);
+  const [tempMonth, setTempMonth] = useState(monthValue);
 
   // 弹窗打开/关闭切换时在渲染期间重置滚轮值(避免 effect 内 setState 的级联渲染)
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
-      setTemp(value);
+      setTempYear(yearValue);
+      setTempMonth(monthValue);
     }
   }
 
@@ -113,14 +121,27 @@ export function WheelPickerModal({
         {/* 阻止点击卡片时冒泡触发 backdrop 的取消 */}
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>{title}</Text>
-          <WheelPicker options={options} value={temp} onChange={setTemp} />
+          <View style={styles.wheelsRow}>
+            <WheelPicker
+              options={yearOptions}
+              value={tempYear}
+              onChange={setTempYear}
+              width={116}
+            />
+            <WheelPicker
+              options={monthOptions}
+              value={tempMonth}
+              onChange={setTempMonth}
+              width={84}
+            />
+          </View>
           <View style={styles.actions}>
             <Pressable style={[styles.button, styles.cancelButton]} onPress={onCancel}>
               <Text style={styles.cancelText}>取消</Text>
             </Pressable>
             <Pressable
               style={[styles.button, styles.confirmButton]}
-              onPress={() => onConfirm(temp)}
+              onPress={() => onConfirm(tempYear, tempMonth)}
             >
               <Text style={styles.confirmText}>确定</Text>
             </Pressable>
@@ -139,7 +160,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    width: 260,
+    width: 280,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingVertical: 20,
@@ -152,8 +173,11 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     marginBottom: 12,
   },
+  wheelsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   window: {
-    width: 220,
     height: VISIBLE_COUNT * ITEM_HEIGHT,
   },
   band: {
@@ -172,7 +196,7 @@ const styles = StyleSheet.create({
     height: ITEM_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 8,
   },
   itemText: {
     fontSize: 16,
@@ -187,6 +211,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 16,
+    alignSelf: 'stretch',
   },
   button: {
     flex: 1,

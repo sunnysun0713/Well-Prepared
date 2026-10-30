@@ -6,8 +6,13 @@ import { WheelPickerModal } from './wheel-picker';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 const TODAY_YEAR = new Date().getFullYear();
-// 滚轮候选年份:今天前后 6 年
-const YEAR_OPTIONS = Array.from({ length: 13 }, (_, i) => String(TODAY_YEAR - 6 + i));
+// 滚轮候选年份:今年往前 50 年
+const YEARS_BACK = 50;
+const FIRST_YEAR = TODAY_YEAR - YEARS_BACK;
+const YEAR_OPTIONS = Array.from(
+  { length: YEARS_BACK + 1 },
+  (_, i) => `${FIRST_YEAR + i}年`,
+);
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => `${i + 1}月`);
 
 /** 日历模块主界面:最上方今天日期,中间年月滚轮切换,下方月历网格;点选日期后网格下方显示当日代办 */
@@ -16,7 +21,7 @@ export function CalendarScreen() {
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-11
   const [selected, setSelected] = useState<Date | null>(null);
-  const [pickerKind, setPickerKind] = useState<'year' | 'month' | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const goPrevMonth = () => {
     if (viewMonth === 0) {
@@ -49,7 +54,7 @@ export function CalendarScreen() {
   // 用箭头浏览可能超出滚轮年份范围,取 index 时夹在候选区间内
   const yearIndex = Math.max(
     0,
-    Math.min(YEAR_OPTIONS.length - 1, viewYear - (TODAY_YEAR - 6)),
+    Math.min(YEAR_OPTIONS.length - 1, viewYear - FIRST_YEAR),
   );
 
   return (
@@ -63,24 +68,16 @@ export function CalendarScreen() {
         <Pressable onPress={goPrevMonth} style={styles.arrowButton} hitSlop={8}>
           <Text style={styles.arrow}>‹</Text>
         </Pressable>
-        <View style={styles.titleGroup}>
-          <Pressable
-            onPress={() => setPickerKind('year')}
-            hitSlop={4}
-            style={({ pressed }) => [styles.titleSegment, pressed && styles.pressed]}
-          >
-            <Text style={styles.monthTitle}>{viewYear}年</Text>
-            <Text style={styles.segmentCaret}>▾</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setPickerKind('month')}
-            hitSlop={4}
-            style={({ pressed }) => [styles.titleSegment, pressed && styles.pressed]}
-          >
-            <Text style={styles.monthTitle}>{viewMonth + 1}月</Text>
-            <Text style={styles.segmentCaret}>▾</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => setPickerOpen(true)}
+          hitSlop={4}
+          style={({ pressed }) => [styles.titleGroup, pressed && styles.pressed]}
+        >
+          <Text style={styles.monthTitle}>
+            {viewYear}年{viewMonth + 1}月
+          </Text>
+          <Text style={styles.segmentCaret}>▾</Text>
+        </Pressable>
         <Pressable onPress={goNextMonth} style={styles.arrowButton} hitSlop={8}>
           <Text style={styles.arrow}>›</Text>
         </Pressable>
@@ -97,26 +94,18 @@ export function CalendarScreen() {
       {selected && <DayTasksPanel date={selected} />}
 
       <WheelPickerModal
-        visible={pickerKind === 'year'}
-        title="选择年份"
-        options={YEAR_OPTIONS}
-        value={yearIndex}
-        onConfirm={(idx) => {
-          setViewYear(TODAY_YEAR - 6 + idx);
-          setPickerKind(null);
+        visible={pickerOpen}
+        title="选择年月"
+        yearOptions={YEAR_OPTIONS}
+        monthOptions={MONTH_OPTIONS}
+        yearValue={yearIndex}
+        monthValue={viewMonth}
+        onConfirm={(yearIdx, monthIdx) => {
+          setViewYear(FIRST_YEAR + yearIdx);
+          setViewMonth(monthIdx);
+          setPickerOpen(false);
         }}
-        onCancel={() => setPickerKind(null)}
-      />
-      <WheelPickerModal
-        visible={pickerKind === 'month'}
-        title="选择月份"
-        options={MONTH_OPTIONS}
-        value={viewMonth}
-        onConfirm={(idx) => {
-          setViewMonth(idx);
-          setPickerKind(null);
-        }}
-        onCancel={() => setPickerKind(null)}
+        onCancel={() => setPickerOpen(false)}
       />
     </ScrollView>
   );
@@ -162,14 +151,9 @@ const styles = StyleSheet.create({
   titleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    minWidth: 150,
     justifyContent: 'center',
-  },
-  titleSegment: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
+    gap: 4,
+    minWidth: 150,
   },
   pressed: {
     opacity: 0.6,
