@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { getTasksForDate } from '@/data/tasks';
+import { useTasks } from '@/data/tasks-context';
 import { TaskCard } from '@/components/TaskCard';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -10,7 +10,8 @@ interface Props {
 
 /** 选中日期下方的「当日代办事项」面板:展示每日任务模块中该日期的任务 */
 export function DayTasksPanel({ date }: Props) {
-  const tasks = getTasksForDate(date);
+  const { getTasks } = useTasks();
+  const tasks = getTasks(date);
 
   const now = new Date();
   const isToday =
@@ -32,7 +33,7 @@ export function DayTasksPanel({ date }: Props) {
       ) : (
         <View style={styles.list}>
           {tasks.map((t) => (
-            <TaskCard key={t.id} task={t} past={isToday && t.time < nowHM} />
+            <TaskCard key={t.id} task={t} past={isToday && t.endTime < nowHM} />
           ))}
         </View>
       )}

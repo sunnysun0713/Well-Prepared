@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { getTasksForDate } from '@/data/tasks';
+import { useTasks } from '@/data/tasks-context';
 import { TaskCard } from '@/components/TaskCard';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -68,9 +68,11 @@ export function DailyTasksScreen() {
     [switchDay],
   );
 
-  // 任务只随日期变化
+  const { getTasks } = useTasks();
+
+  // 任务只随日期(与任务状态)变化
   const dateKey = selectedDate.toDateString();
-  const tasks = useMemo(() => getTasksForDate(new Date(dateKey)), [dateKey]);
+  const tasks = useMemo(() => getTasks(new Date(dateKey)), [dateKey, getTasks]);
 
   const isTodaySelected = relativeLabel(selectedDate, now) === '今天';
   const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
@@ -107,7 +109,7 @@ export function DailyTasksScreen() {
           <Text style={styles.sectionLabel}>当日任务({tasks.length})</Text>
           <View style={styles.list}>
             {tasks.map((t) => (
-              <TaskCard key={t.id} task={t} past={isTodaySelected && t.time < nowHM} />
+              <TaskCard key={t.id} task={t} past={isTodaySelected && t.endTime < nowHM} />
             ))}
             {tasks.length === 0 && (
               <View style={styles.empty}>

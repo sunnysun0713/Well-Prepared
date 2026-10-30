@@ -15,11 +15,12 @@ src/
   modules/              # 模块注册表 + 各模块目录(每个模块自包含)
     types.ts            # AppModule 接口
     registry.ts         # 模块注册表(登记顺序 = 顶部栏顺序)
-    daily-tasks/        # 每日任务:实时时钟 + 今日任务卡片列表
+    daily-tasks/        # 每日任务:左右滑动切日 + 当日任务卡片列表
     calendar/           # 日历
     task-import/        # 任务载入
   data/
-    tasks.ts            # 任务数据层:Task 类型 + 按日期取任务(示例数据)
+    tasks.ts            # 任务数据层:Task 类型 + 示例数据
+    tasks-context.tsx   # 任务状态(React Context,内存存储,模块间实时联动)
   components/
     ModuleBar.tsx       # 顶部模块选择栏
     ModulePlaceholder.tsx
