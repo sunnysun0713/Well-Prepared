@@ -1,17 +1,22 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 const WEEK_HEADERS = ['一', '二', '三', '四', '五', '六', '日'];
 const WEEKEND_COLOR = '#DC2626';
+const ACCENT = '#4F46E5';
 
 interface Props {
   year: number;
   /** 0-11 */
   month: number;
   today: Date;
+  /** 选中的日期(可能在其他月份) */
+  selected: Date | null;
+  /** 点击某一天(传当月日号) */
+  onSelectDay: (day: number) => void;
 }
 
-/** 月历网格:周标题行 + 固定 6 周(42 格),今天高亮,周末着色 */
-export function MonthGrid({ year, month, today }: Props) {
+/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮 */
+export function MonthGrid({ year, month, today, selected, onSelectDay }: Props) {
   // 周一起始:计算当月 1 日前需要补的空格数
   const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -28,6 +33,14 @@ export function MonthGrid({ year, month, today }: Props) {
     month === today.getMonth() &&
     day === today.getDate();
 
+  // 选中恰为今天时只显示今天的实心圈,空心圈不与今日高亮重叠
+  const isSelected = (day: number) =>
+    selected !== null &&
+    !isToday(day) &&
+    year === selected.getFullYear() &&
+    month === selected.getMonth() &&
+    day === selected.getDate();
+
   return (
     <View style={styles.grid}>
       {WEEK_HEADERS.map((h, i) => (
@@ -37,23 +50,40 @@ export function MonthGrid({ year, month, today }: Props) {
           </Text>
         </View>
       ))}
-      {cells.map((day, i) => (
-        <View key={`d-${i}`} style={styles.cell}>
-          {day !== null && (
-            <View style={[styles.dayCircle, isToday(day) && styles.todayCircle]}>
-              <Text
-                style={[
-                  styles.dayText,
-                  i % 7 >= 5 && !isToday(day) && { color: WEEKEND_COLOR },
-                  isToday(day) && styles.todayText,
-                ]}
-              >
-                {day}
-              </Text>
-            </View>
-          )}
-        </View>
-      ))}
+      {cells.map((day, i) => {
+        const weekend = i % 7 >= 5;
+        const todayCell = day !== null && isToday(day);
+        const selectedCell = day !== null && isSelected(day);
+        return (
+          <View key={`d-${i}`} style={styles.cell}>
+            {day !== null && (
+              <Pressable onPress={() => onSelectDay(day)} hitSlop={4}>
+                {({ pressed }) => (
+                  <View
+                    style={[
+                      styles.dayCircle,
+                      todayCell && styles.todayCircle,
+                      selectedCell && styles.selectedCircle,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        weekend && !todayCell && !selectedCell && { color: WEEKEND_COLOR },
+                        selectedCell && styles.selectedText,
+                        todayCell && styles.todayText,
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -87,11 +117,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   todayCircle: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: ACCENT,
+  },
+  selectedCircle: {
+    borderWidth: 2,
+    borderColor: ACCENT,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   dayText: {
     fontSize: 15,
     color: '#1F2937',
+  },
+  selectedText: {
+    color: ACCENT,
+    fontWeight: '600',
   },
   todayText: {
     color: '#FFFFFF',
