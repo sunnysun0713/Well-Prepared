@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { DayTasksPanel } from './day-tasks-panel';
 import { MonthGrid } from './month-grid';
+import { YearMonthPicker } from './year-month-picker';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -11,6 +12,7 @@ export function CalendarScreen() {
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-11
   const [selected, setSelected] = useState<Date | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const goPrevMonth = () => {
     if (viewMonth === 0) {
@@ -51,13 +53,32 @@ export function CalendarScreen() {
         <Pressable onPress={goPrevMonth} style={styles.arrowButton} hitSlop={8}>
           <Text style={styles.arrow}>‹</Text>
         </Pressable>
-        <Text style={styles.monthTitle}>
-          {viewYear}年{viewMonth + 1}月
-        </Text>
+        <Pressable
+          onPress={() => setPickerOpen(!pickerOpen)}
+          style={styles.monthTitleButton}
+          hitSlop={4}
+        >
+          <Text style={styles.monthTitle}>
+            {viewYear}年{viewMonth + 1}月
+          </Text>
+          <Text style={styles.dropdownCaret}>{pickerOpen ? '▴' : '▾'}</Text>
+        </Pressable>
         <Pressable onPress={goNextMonth} style={styles.arrowButton} hitSlop={8}>
           <Text style={styles.arrow}>›</Text>
         </Pressable>
       </View>
+
+      {pickerOpen && (
+        <YearMonthPicker
+          year={viewYear}
+          month={viewMonth}
+          onPick={(y, m) => {
+            setViewYear(y);
+            setViewMonth(m);
+            setPickerOpen(false);
+          }}
+        />
+      )}
 
       <MonthGrid
         year={viewYear}
@@ -109,11 +130,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
   },
+  monthTitleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    minWidth: 110,
+  },
   monthTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-    minWidth: 110,
-    textAlign: 'center',
+  },
+  dropdownCaret: {
+    fontSize: 10,
+    color: '#6B7280',
   },
 });
