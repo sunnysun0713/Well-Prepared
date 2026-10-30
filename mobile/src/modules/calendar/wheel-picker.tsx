@@ -26,18 +26,41 @@ interface WheelPickerProps {
   width?: number;
 }
 
-/** 滚轮选择器:可滑动吸附,也可直接点选项 */
+/** 滚轮选择器:滚动中实时选中居中项,停止后强制吸附到单项居中 */
 export function WheelPicker({ options, value, onChange, width = 120 }: WheelPickerProps) {
   const scrollRef = useRef<ScrollViewInstance>(null);
   const [selected, setSelected] = useState(value);
+  const dragging = useRef(false);
+  const lastOffset = useRef(value * ITEM_HEIGHT);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimer = () => {
+    if (settleTimer.current) {
+      clearTimeout(settleTimer.current);
+      settleTimer.current = null;
+    }
+  };
 
   const scrollToIndex = (i: number, animated = true) => {
     scrollRef.current?.scrollTo({ y: i * ITEM_HEIGHT, animated });
   };
 
-  /** 停稳后吸附到最近的选项 */
+  /** 当前偏移对应的选项下标(夹在有效范围) */
+  const indexAt = (offsetY: number) =>
+    Math.max(0, Math.min(options.length - 1, Math.round(offsetY / ITEM_HEIGHT)));
+
+  /** 滚动中:实时选中经过中心阴影的项 */
+  const track = (offsetY: number) => {
+    lastOffset.current = offsetY;
+    const i = indexAt(offsetY);
+    setSelected(i);
+    onChange(i);
+  };
+
+  /** 滚动停止后:校正到精确位置,避免两项各占一半卡在阴影里 */
   const settle = (offsetY: number) => {
-    const i = Math.max(0, Math.min(options.length - 1, Math.round(offsetY / ITEM_HEIGHT)));
+    lastOffset.current = offsetY;
+    const i = indexAt(offsetY);
     if (Math.abs(offsetY - i * ITEM_HEIGHT) > 0.5) {
       scrollToIndex(i);
     }
@@ -45,7 +68,19 @@ export function WheelPicker({ options, value, onChange, width = 120 }: WheelPick
     onChange(i);
   };
 
+  /** 滚动事件停歇 80ms 后兜底吸附(覆盖无 snap 的平台,如 Web) */
+  const scheduleSettle = () => {
+    clearTimer();
+    settleTimer.current = setTimeout(() => {
+      if (!dragging.current) {
+        settle(lastOffset.current);
+      }
+    }, 80);
+  };
+
+  /** 直接点选某项 */
   const pick = (i: number) => {
+    clearTimer();
     scrollToIndex(i);
     setSelected(i);
     onChange(i);
@@ -61,9 +96,17 @@ export function WheelPicker({ options, value, onChange, width = 120 }: WheelPick
         decelerationRate="fast"
         contentOffset={{ x: 0, y: value * ITEM_HEIGHT }}
         contentContainerStyle={styles.scrollContent}
-        onScrollEndDrag={(e: NativeSyntheticEvent<NativeScrollEvent>) =>
-          settle(e.nativeEvent.contentOffset.y)
-        }
+        onScrollBeginDrag={() => {
+          dragging.current = true;
+          clearTimer();
+        }}
+        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+          track(e.nativeEvent.contentOffset.y);
+          scheduleSettle();
+        }}
+        onScrollEndDrag={() => {
+          dragging.current = false;
+        }}
         onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) =>
           settle(e.nativeEvent.contentOffset.y)
         }

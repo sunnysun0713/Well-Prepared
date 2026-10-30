@@ -51,26 +51,14 @@ export function CalendarScreen() {
     }
   };
 
-  // 用箭头浏览可能超出滚轮年份范围,取 index 时夹在候选区间内
-  const yearIndex = Math.max(
-    0,
-    Math.min(YEAR_OPTIONS.length - 1, viewYear - FIRST_YEAR),
-  );
-
   /** 某年某月的天数:JS Date 自动处理大小月与闰年 */
   const getDayCount = (yearIdx: number, monthIdx: number) =>
     new Date(FIRST_YEAR + yearIdx, monthIdx + 1, 0).getDate();
 
-  // 日滚轮初始值:优先当前选中日期,否则当月为今天所在月时用今天,其余用 1 日
-  const selectedInView =
-    selected !== null &&
-    selected.getFullYear() === viewYear &&
-    selected.getMonth() === viewMonth;
-  const dayValue = selectedInView
-    ? selected.getDate() - 1
-    : viewYear === today.getFullYear() && viewMonth === today.getMonth()
-      ? today.getDate() - 1
-      : 0;
+  // 打开弹窗时三个滚轮定位到今天
+  const todayYearIndex = today.getFullYear() - FIRST_YEAR;
+  const todayMonthIndex = today.getMonth();
+  const todayDayIndex = today.getDate() - 1;
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
@@ -113,9 +101,9 @@ export function CalendarScreen() {
         yearOptions={YEAR_OPTIONS}
         monthOptions={MONTH_OPTIONS}
         getDayCount={getDayCount}
-        yearValue={yearIndex}
-        monthValue={viewMonth}
-        dayValue={dayValue}
+        yearValue={todayYearIndex}
+        monthValue={todayMonthIndex}
+        dayValue={todayDayIndex}
         onConfirm={(yearIdx, monthIdx, dayIdx) => {
           const y = FIRST_YEAR + yearIdx;
           setViewYear(y);
