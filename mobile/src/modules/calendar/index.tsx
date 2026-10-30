@@ -20,7 +20,8 @@ export function CalendarScreen() {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-11
-  const [selected, setSelected] = useState<Date | null>(null);
+  // 进入模块时默认选中今天,直接展示当天任务
+  const [selected, setSelected] = useState<Date | null>(() => new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const goPrevMonth = () => {
@@ -41,10 +42,16 @@ export function CalendarScreen() {
     }
   };
 
+  /** 是否同一天(忽略时分秒) */
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
   /** 点击日期:选中;再次点击同一日期取消选中 */
   const handleSelectDay = (day: number) => {
     const picked = new Date(viewYear, viewMonth, day);
-    if (selected && selected.getTime() === picked.getTime()) {
+    if (selected && isSameDay(selected, picked)) {
       setSelected(null);
     } else {
       setSelected(picked);
