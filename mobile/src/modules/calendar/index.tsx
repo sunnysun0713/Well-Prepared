@@ -30,18 +30,15 @@ export function CalendarScreen() {
   const { getTasks } = useTasks();
   const { levelFor } = useBusyness();
 
-  // 当前视图月份:每日繁忙度等级(圆点颜色)+ 每日收藏(紧急)任务数,用于网格标记
-  const { levelsByDay, favoritesByDay } = useMemo(() => {
+  // 当前视图月份每日繁忙度等级,用于网格彩色圆点标记
+  const levelsByDay = useMemo(() => {
     const levels: Record<number, number> = {};
-    const favorites: Record<number, number> = {};
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
     for (let day = 1; day <= daysInMonth; day += 1) {
-      const dayTasks = getTasks(new Date(viewYear, viewMonth, day));
-      if (dayTasks.length > 0) levels[day] = levelFor(dayTasks.length);
-      const favoriteCount = dayTasks.filter((t) => t.favorite).length;
-      if (favoriteCount > 0) favorites[day] = favoriteCount;
+      const count = getTasks(new Date(viewYear, viewMonth, day)).length;
+      if (count > 0) levels[day] = levelFor(count);
     }
-    return { levelsByDay: levels, favoritesByDay: favorites };
+    return levels;
   }, [getTasks, viewYear, viewMonth, levelFor]);
 
   const goPrevMonth = () => {
@@ -129,7 +126,6 @@ export function CalendarScreen() {
         today={today}
         selected={selected}
         levelsByDay={levelsByDay}
-        favoritesByDay={favoritesByDay}
         onSelectDay={handleSelectDay}
       />
 

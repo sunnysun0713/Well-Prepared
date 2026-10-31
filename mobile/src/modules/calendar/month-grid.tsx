@@ -14,8 +14,6 @@ interface Props {
   selected: Date | null;
   /** 每日繁忙度等级(0-5),格内圆点按等级取色 */
   levelsByDay: Record<number, number>;
-  /** 每日收藏(紧急)任务数,大于 0 时圆点高亮 */
-  favoritesByDay: Record<number, number>;
   /** 点击某一天(传当月日号) */
   onSelectDay: (day: number) => void;
 }
@@ -27,7 +25,6 @@ export function MonthGrid({
   today,
   selected,
   levelsByDay,
-  favoritesByDay,
   onSelectDay,
 }: Props) {
   // 周一起始:计算当月 1 日前需要补的空格数
@@ -69,9 +66,7 @@ export function MonthGrid({
         const selectedCell = day !== null && isSelected(day);
         const level =
           day !== null ? Math.min(levelsByDay[day] ?? 0, BUSYNESS_LEVEL_COUNT) : 0;
-        const favorite = day !== null && (favoritesByDay[day] ?? 0) > 0;
         const dotColor = busynessColorFor(level);
-        const showDot = level > 0 || favorite;
         return (
           <View key={`d-${i}`} style={styles.cell}>
             {day !== null && (
@@ -95,13 +90,10 @@ export function MonthGrid({
                     >
                       {day}
                     </Text>
-                    {showDot && (
-                      <View style={styles.dotWrap}>
-                        {favorite && (
-                          <View style={[styles.dotRing, { borderColor: dotColor }]} />
-                        )}
-                        <View style={[styles.taskDot, { backgroundColor: dotColor }]} />
-                      </View>
+                    {level > 0 && (
+                      <View
+                        style={[styles.taskDot, { backgroundColor: dotColor }]}
+                      />
                     )}
                   </View>
                 )}
@@ -156,27 +148,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1F2937',
   },
-  /** 原版圆点位置:绝对定位在日期下方 */
-  dotWrap: {
-    position: 'absolute',
-    bottom: 2,
-    width: 9,
-    height: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  /** 原版圆点位置:绝对定位在日期下方,尺寸放大到 8px */
   taskDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  /** 收藏任务:圆点外再画一圈同色描环,形成高亮 */
-  dotRing: {
     position: 'absolute',
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    borderWidth: 1,
+    bottom: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   selectedText: {
     color: ACCENT,
