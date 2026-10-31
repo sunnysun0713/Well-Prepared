@@ -9,17 +9,25 @@ import {
   type ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_PRESET_ID } from './presets';
 
-/** AI 设置:所选视觉服务 + API key + 提取后导入模式;数据结构变化时改版本号 */
+/** AI 设置:所选视觉服务 + API key + 导入模式 + 提取预设;数据结构变化时改版本号 */
 export interface AiSettings {
   providerId: string;
   apiKey: string;
   /** true = 提取后直接写入任务;false = 弹确认列表由用户勾选 */
   autoImport: boolean;
+  /** 当前提取预设模板 id(见 presets.ts) */
+  presetId: string;
 }
 
 const STORAGE_KEY = 'ai-settings-v1';
-const DEFAULT_SETTINGS: AiSettings = { providerId: 'mock', apiKey: '', autoImport: false };
+const DEFAULT_SETTINGS: AiSettings = {
+  providerId: 'mock',
+  apiKey: '',
+  autoImport: false,
+  presetId: DEFAULT_PRESET_ID,
+};
 
 type Action = { type: 'REPLACE'; settings: AiSettings };
 
@@ -62,6 +70,8 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
               apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : '',
               autoImport:
                 typeof parsed.autoImport === 'boolean' ? parsed.autoImport : DEFAULT_SETTINGS.autoImport,
+              presetId:
+                typeof parsed.presetId === 'string' ? parsed.presetId : DEFAULT_SETTINGS.presetId,
             },
           });
         } catch {

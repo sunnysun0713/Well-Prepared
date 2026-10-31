@@ -10,12 +10,13 @@ export async function extractTasksFromImage(
   provider: VisionProvider,
   apiKey: string,
   image: ImageRef,
+  prompt: string,
 ): Promise<ExtractedTask[]> {
   const base64 = await resizeImageToBase64(image);
   if (!base64) {
     throw new Error('图片处理失败,请换一张图片试试');
   }
-  const raw = await provider.extractTasks(base64, apiKey);
+  const raw = await provider.extractTasks(base64, apiKey, prompt);
   const today = new Date();
   return raw
     .map((item) => normalizeTask(item, today))

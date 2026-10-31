@@ -11,7 +11,6 @@ interface CompatConfig {
   label: string;
   baseUrl: string;
   model: string;
-  prompt: string;
 }
 
 interface CompatResponse {
@@ -23,7 +22,11 @@ export function createOpenAICompatProvider(config: CompatConfig): VisionProvider
     id: config.id,
     label: config.label,
     mock: false,
-    async extractTasks(imageBase64: string, apiKey: string): Promise<RawTaskItem[]> {
+    async extractTasks(
+      imageBase64: string,
+      apiKey: string,
+      prompt: string,
+    ): Promise<RawTaskItem[]> {
       const res = await fetch(config.baseUrl, {
         method: 'POST',
         headers: {
@@ -36,7 +39,7 @@ export function createOpenAICompatProvider(config: CompatConfig): VisionProvider
             {
               role: 'user',
               content: [
-                { type: 'text', text: config.prompt },
+                { type: 'text', text: prompt },
                 {
                   type: 'image_url',
                   image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
