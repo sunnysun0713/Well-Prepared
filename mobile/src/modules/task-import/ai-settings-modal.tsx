@@ -29,7 +29,8 @@ export function AiSettingsModal({ visible, onClose }: Props) {
   const provider = PROVIDERS.find((p) => p.id === providerId);
 
   const save = () => {
-    updateSettings({ providerId, apiKey: provider?.mock ? '' : apiKey.trim() });
+    // 展开已有设置,避免覆盖导入模式等其它字段
+    updateSettings({ ...settings, providerId, apiKey: provider?.mock ? '' : apiKey.trim() });
     onClose();
   };
 

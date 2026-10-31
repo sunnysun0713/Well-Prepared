@@ -10,14 +10,16 @@ import {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** AI 设置:所选视觉服务 + API key;数据结构变化时改版本号 */
+/** AI 设置:所选视觉服务 + API key + 提取后导入模式;数据结构变化时改版本号 */
 export interface AiSettings {
   providerId: string;
   apiKey: string;
+  /** true = 提取后直接写入任务;false = 弹确认列表由用户勾选 */
+  autoImport: boolean;
 }
 
 const STORAGE_KEY = 'ai-settings-v1';
-const DEFAULT_SETTINGS: AiSettings = { providerId: 'mock', apiKey: '' };
+const DEFAULT_SETTINGS: AiSettings = { providerId: 'mock', apiKey: '', autoImport: false };
 
 type Action = { type: 'REPLACE'; settings: AiSettings };
 
@@ -58,6 +60,8 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
               providerId:
                 typeof parsed.providerId === 'string' ? parsed.providerId : DEFAULT_SETTINGS.providerId,
               apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : '',
+              autoImport:
+                typeof parsed.autoImport === 'boolean' ? parsed.autoImport : DEFAULT_SETTINGS.autoImport,
             },
           });
         } catch {

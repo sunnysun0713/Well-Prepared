@@ -10,22 +10,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { normalizeDate, normalizeTime } from '@/ai/parse';
-import type { ExtractedTask } from '@/ai/types';
-import { type Task } from '@/data/tasks';
+import { commitImport, draftsOf } from '@/ai/import';
+import type { ExtractedTask, ImportDraft } from '@/ai/types';
 import { useTasks } from '@/data/tasks-context';
 
 const ACCENT = '#4F46E5';
-
-/** 可编辑的导入条目:勾选 + 各字段文案,导入时统一归一化 */
-interface ImportItem {
-  selected: boolean;
-  title: string;
-  dateText: string;
-  startText: string;
-  endText: string;
-  note: string;
-}
 
 interface Props {
   visible: boolean;
@@ -35,46 +24,21 @@ interface Props {
   onImport: (count: number) => void;
 }
 
-/** dateKey 转可编辑标签:今天 / 明天 / 昨天 / M月D日(跨年带年份) */
-function dateLabel(dateKey: string, today: Date): string {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  const diff = Math.round(
-    (Date.UTC(y, m - 1, d) -
-      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
-      86400000,
-  );
-  if (diff === 0) return '今天';
-  if (diff === 1) return '明天';
-  if (diff === -1) return '昨天';
-  if (y === today.getFullYear()) return `${m}月${d}日`;
-  return `${y}年${m}月${d}日`;
-}
-
 /** 提取结果确认弹窗:逐条勾选/编辑后导入任务数据层 */
 export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props) {
   const { addTask } = useTasks();
   const [prevVisible, setPrevVisible] = useState(visible);
-  const [items, setItems] = useState<ImportItem[]>([]);
+  const [items, setItems] = useState<ImportDraft[]>([]);
 
   // 打开弹窗时按最新提取结果重建条目(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
-      const today = new Date();
-      setItems(
-        tasks.map((t) => ({
-          selected: true,
-          title: t.title,
-          dateText: dateLabel(t.dateKey, today),
-          startText: t.startTime,
-          endText: t.endTime,
-          note: t.note ?? '',
-        })),
-      );
+      setItems(draftsOf(tasks, new Date()));
     }
   }
 
-  const patchItem = (index: number, patch: Partial<ImportItem>) => {
+  const patchItem = (index: number, patch: Partial<ImportDraft>) => {
     setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   };
 
@@ -87,29 +51,7 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
 
   /** 勾选的条目归一化后写入任务数据层,返回实际写入条数 */
   const importSelected = () => {
-    const today = new Date();
-    let count = 0;
-    items.forEach((it, index) => {
-      if (!it.selected) return;
-      const title = it.title.trim();
-      if (!title) return;
-      const start = normalizeTime(it.startText);
-      let end = normalizeTime(it.endText);
-      // 只有起始时间有效时保留;结束时间不晚于起始时间时丢弃
-      if (!start) end = '';
-      else if (end && end <= start) end = '';
-      const key = normalizeDate(it.dateText, today);
-      const [y, m, d] = key.split('-').map(Number);
-      const task: Task = {
-        id: `${key}-t${Date.now()}-${index}`,
-        title,
-        startTime: start,
-        endTime: end,
-        note: it.note.trim() || undefined,
-      };
-      addTask(new Date(y, m - 1, d), task);
-      count += 1;
-    });
+    const count = commitImport(items, addTask);
     onImport(count);
     onClose();
   };

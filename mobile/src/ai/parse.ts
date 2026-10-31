@@ -152,3 +152,18 @@ export function parseModelResponse(text: string): RawTaskItem[] {
   }
   return tasks.filter((t): t is RawTaskItem => typeof t === 'object' && t !== null);
 }
+
+/** dateKey 转友好标签:今天 / 明天 / 昨天 / M月D日(跨年带年份) */
+export function dateLabel(dateKey: string, today: Date): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const diff = Math.round(
+    (Date.UTC(y, m - 1, d) -
+      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
+      86400000,
+  );
+  if (diff === 0) return '今天';
+  if (diff === 1) return '明天';
+  if (diff === -1) return '昨天';
+  if (y === today.getFullYear()) return `${m}月${d}日`;
+  return `${y}年${m}月${d}日`;
+}

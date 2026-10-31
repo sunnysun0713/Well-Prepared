@@ -12,6 +12,16 @@ export interface ExtractedTask {
   note?: string;
 }
 
+/** 可编辑的导入条目:勾选 + 各字段文案(导入时统一归一化) */
+export interface ImportDraft {
+  selected: boolean;
+  title: string;
+  dateText: string;
+  startText: string;
+  endText: string;
+  note: string;
+}
+
 /** 模型原始输出条目:日期/时间尚未归一化,允许相对表达(明天、下午3点等) */
 export interface RawTaskItem {
   title?: unknown;

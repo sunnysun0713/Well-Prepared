@@ -2,13 +2,21 @@ import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { extractTasksFromImage } from '@/ai/extract';
+import { commitImport, draftsOf } from '@/ai/import';
 import { getProvider } from '@/ai/providers';
 import { useAiSettings } from '@/ai/settings';
 import type { ExtractedTask } from '@/ai/types';
+import { useTasks } from '@/data/tasks-context';
 import { AiSettingsModal } from './ai-settings-modal';
 import { ImportConfirmModal } from './import-confirm-modal';
 
 const ACCENT = '#4F46E5';
+
+/** 导入模式选项:自动直接写入 / 手动弹窗确认 */
+const MODE_OPTIONS = [
+  { value: true, label: '自动导入' },
+  { value: false, label: '手动确认' },
+] as const;
 
 /** 已选图片的展示信息(原始 uri 供预览,提取阶段再压缩转 base64) */
 interface PickedImage {
@@ -19,7 +27,8 @@ interface PickedImage {
 
 /** 任务载入模块主界面:选图/拍照 + 预览 + AI 提取任务 */
 export function TaskImportScreen() {
-  const { settings } = useAiSettings();
+  const { settings, updateSettings } = useAiSettings();
+  const { addTask } = useTasks();
   const [image, setImage] = useState<PickedImage | null>(null);
   const [error, setError] = useState('');
   const [importNote, setImportNote] = useState('');
@@ -70,6 +79,14 @@ export function TaskImportScreen() {
         throw new Error('请先在右上角设置中填写 API Key');
       }
       const tasks = await extractTasksFromImage(provider, settings.apiKey, image);
+      // 自动导入模式:直接归一化写入,不弹确认列表
+      if (settings.autoImport) {
+        const count = commitImport(draftsOf(tasks, new Date()), addTask);
+        setImportNote(
+          count > 0 ? `已自动导入 ${count} 条任务,到「每日任务」查看` : '没有识别到可导入的任务',
+        );
+        return;
+      }
       setResult(tasks);
       setResultOpen(true);
     } catch (e) {
@@ -83,7 +100,27 @@ export function TaskImportScreen() {
     <View style={styles.root}>
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={styles.title}>任务载入</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>任务载入</Text>
+            {/* 导入模式开关:自动直接写入 / 手动弹窗确认 */}
+            <View style={styles.modeSwitch}>
+              {MODE_OPTIONS.map((opt) => {
+                const active = settings.autoImport === opt.value;
+                return (
+                  <Pressable
+                    key={opt.label}
+                    onPress={() => updateSettings({ ...settings, autoImport: opt.value })}
+                    style={[styles.modeChip, active && styles.modeChipActive]}
+                    hitSlop={4}
+                  >
+                    <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
           <Text style={styles.subtitle}>拍一张照片,自动变成当天计划</Text>
         </View>
         <Pressable style={styles.gearButton} onPress={() => setSettingsOpen(true)} hitSlop={8}>
@@ -157,10 +194,40 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
     fontSize: 20,
     fontWeight: '600',
     color: '#1F2937',
+  },
+  modeSwitch: {
+    flexDirection: 'row',
+    gap: 2,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 13,
+    padding: 2,
+  },
+  modeChip: {
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeChipActive: {
+    backgroundColor: ACCENT,
+  },
+  modeChipText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  modeChipTextActive: {
+    color: '#FFFFFF',
   },
   subtitle: {
     fontSize: 13,
