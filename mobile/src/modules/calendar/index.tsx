@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTasks } from '@/data/tasks-context';
 import { DayTasksPanel } from './day-tasks-panel';
 import { MonthGrid } from './month-grid';
 import { WheelPickerModal } from './wheel-picker';
@@ -23,6 +24,19 @@ export function CalendarScreen() {
   // 进入模块时默认选中今天,直接展示当天任务
   const [selected, setSelected] = useState<Date | null>(() => new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { getTasks } = useTasks();
+
+  // 当前视图月份中有任务的日号,用于网格圆点标记
+  const taskDays = useMemo(() => {
+    const set = new Set<number>();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      if (getTasks(new Date(viewYear, viewMonth, day)).length > 0) {
+        set.add(day);
+      }
+    }
+    return set;
+  }, [getTasks, viewYear, viewMonth]);
 
   const goPrevMonth = () => {
     if (viewMonth === 0) {
@@ -97,6 +111,7 @@ export function CalendarScreen() {
         month={viewMonth}
         today={today}
         selected={selected}
+        taskDays={taskDays}
         onSelectDay={handleSelectDay}
       />
 

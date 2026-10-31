@@ -33,7 +33,11 @@ export function DayTasksPanel({ date }: Props) {
       ) : (
         <View style={styles.list}>
           {tasks.map((t) => (
-            <TaskCard key={t.id} task={t} past={isToday && t.endTime < nowHM} />
+            <TaskCard
+              key={t.id}
+              task={t}
+              past={isToday && t.endTime !== '' && t.endTime < nowHM}
+            />
           ))}
         </View>
       )}

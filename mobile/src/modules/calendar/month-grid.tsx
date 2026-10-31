@@ -11,12 +11,14 @@ interface Props {
   today: Date;
   /** 选中的日期(可能在其他月份) */
   selected: Date | null;
+  /** 有任务的日号集合,格内显示小圆点 */
+  taskDays: Set<number>;
   /** 点击某一天(传当月日号) */
   onSelectDay: (day: number) => void;
 }
 
-/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮 */
-export function MonthGrid({ year, month, today, selected, onSelectDay }: Props) {
+/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,有任务显示圆点 */
+export function MonthGrid({ year, month, today, selected, taskDays, onSelectDay }: Props) {
   // 周一起始:计算当月 1 日前需要补的空格数
   const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -77,6 +79,9 @@ export function MonthGrid({ year, month, today, selected, onSelectDay }: Props) 
                     >
                       {day}
                     </Text>
+                    {taskDays.has(day) && (
+                      <View style={[styles.taskDot, todayCell && styles.taskDotOnToday]} />
+                    )}
                   </View>
                 )}
               </Pressable>
@@ -129,6 +134,17 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 15,
     color: '#1F2937',
+  },
+  taskDot: {
+    position: 'absolute',
+    bottom: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: ACCENT,
+  },
+  taskDotOnToday: {
+    backgroundColor: '#FFFFFF',
   },
   selectedText: {
     color: ACCENT,
