@@ -11,6 +11,13 @@ const EXTRACT_PROMPT = `你是任务提取助手。请从图片中提取所有�
 export const PROVIDERS: VisionProvider[] = [
   mockProvider,
   createOpenAICompatProvider({
+    id: 'deepseek',
+    label: 'DeepSeek 视觉',
+    baseUrl: 'https://api.deepseek.com/chat/completions',
+    model: 'deepseek-flash',
+    prompt: EXTRACT_PROMPT,
+  }),
+  createOpenAICompatProvider({
     id: 'qwen-vl',
     label: '通义千问 Qwen-VL',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
