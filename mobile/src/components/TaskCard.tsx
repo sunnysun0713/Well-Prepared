@@ -11,15 +11,13 @@ interface Props {
   task: Task;
   /** 时间已过,整卡弱化显示 */
   past: boolean;
-  /** 提供时在卡片上显示删除按钮(日历模块使用) */
-  onRequestDelete?: () => void;
 }
 
 /**
  * 任务卡片:时间上下排列 + 标题/备注 + 分类色条。
  * 点击卡片主体时,左侧色条变宽并竖排显示分类名,内容整体右移。
  */
-export function TaskCard({ task, past, onRequestDelete }: Props) {
+export function TaskCard({ task, past }: Props) {
   const { updateTask } = useTasks();
   const { categories } = useCategories();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -80,11 +78,6 @@ export function TaskCard({ task, past, onRequestDelete }: Props) {
       <Pressable onPress={() => setSettingsOpen(true)} hitSlop={8}>
         <Text style={styles.gear}>⚙️</Text>
       </Pressable>
-      {onRequestDelete ? (
-        <Pressable onPress={onRequestDelete} hitSlop={8}>
-          <Text style={styles.trash}>🗑️</Text>
-        </Pressable>
-      ) : null}
 
       <TimeRangeModal
         visible={timeOpen}
@@ -197,8 +190,5 @@ const styles = StyleSheet.create({
   gear: {
     fontSize: 16,
     color: '#6B7280',
-  },
-  trash: {
-    fontSize: 15,
   },
 });

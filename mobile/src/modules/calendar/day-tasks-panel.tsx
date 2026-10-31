@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AddTaskModal } from '@/components/AddTaskModal';
-import { ConfirmModal } from '@/components/ConfirmModal';
 import { TaskCard } from '@/components/TaskCard';
-import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 
 const ACCENT = '#4F46E5';
@@ -15,8 +13,7 @@ interface Props {
 
 /** 选中日期下方的「当日代办事项」面板:展示每日任务模块中该日期的任务 */
 export function DayTasksPanel({ date }: Props) {
-  const { getTasks, deleteTask } = useTasks();
-  const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
+  const { getTasks } = useTasks();
   const [addOpen, setAddOpen] = useState(false);
   const tasks = getTasks(date);
 
@@ -49,28 +46,10 @@ export function DayTasksPanel({ date }: Props) {
               key={t.id}
               task={t}
               past={isToday && t.endTime !== '' && t.endTime < nowHM}
-              onRequestDelete={() => setPendingDelete(t)}
             />
           ))}
         </View>
       )}
-
-      <ConfirmModal
-        visible={pendingDelete !== null}
-        title="删除任务"
-        message={
-          pendingDelete
-            ? `确定删除「${pendingDelete.title}」？此操作不可恢复`
-            : ''
-        }
-        confirmText="删除"
-        danger
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={() => {
-          if (pendingDelete) deleteTask(pendingDelete.id);
-          setPendingDelete(null);
-        }}
-      />
 
       <AddTaskModal visible={addOpen} date={date} onClose={() => setAddOpen(false)} />
     </View>
