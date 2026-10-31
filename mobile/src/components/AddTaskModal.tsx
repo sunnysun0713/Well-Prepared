@@ -6,6 +6,7 @@ import { useTasks } from '@/data/tasks-context';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
 import { CategoryPicker } from './CategoryPicker';
 import { ReminderTimeModal } from './ReminderTimeModal';
+import { TimeRangeModal } from './TimeRangeModal';
 
 const ACCENT = '#4F46E5';
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -28,6 +29,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [remind, setRemind] = useState<number | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
   const [error, setError] = useState('');
 
   // 打开弹窗时重置表单(渲染期间派生,避免 effect 内 setState)
@@ -41,6 +43,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       setCategoryId(undefined);
       setRemind(null);
       setReminderOpen(false);
+      setTimeOpen(false);
       setError('');
     }
   }
@@ -104,25 +107,12 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
           />
 
           <Text style={styles.label}>时间</Text>
-          <View style={styles.timeRow}>
-            <TextInput
-              value={startTime}
-              onChangeText={setStartTime}
-              style={styles.timeInput}
-              placeholder="09:00"
-              placeholderTextColor="#9CA3AF"
-              maxLength={5}
-            />
-            <Text style={styles.timeDash}>至</Text>
-            <TextInput
-              value={endTime}
-              onChangeText={setEndTime}
-              style={styles.timeInput}
-              placeholder="09:30"
-              placeholderTextColor="#9CA3AF"
-              maxLength={5}
-            />
-          </View>
+          <Pressable style={styles.timeButton} onPress={() => setTimeOpen(true)}>
+            <Text style={styles.timeButtonText}>
+              {startTime} ~ {endTime}
+            </Text>
+            <Text style={styles.timeButtonHint}>点击设置</Text>
+          </Pressable>
 
           <Text style={styles.label}>分类</Text>
           <CategoryPicker value={categoryId} onChange={setCategoryId} />
@@ -162,6 +152,19 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
           </View>
         </Pressable>
       </Pressable>
+
+      <TimeRangeModal
+        visible={timeOpen}
+        subtitle={title}
+        initialStart={startTime}
+        initialEnd={endTime}
+        onCancel={() => setTimeOpen(false)}
+        onConfirm={(start, end) => {
+          setStartTime(start);
+          setEndTime(end);
+          setTimeOpen(false);
+        }}
+      />
 
       <ReminderTimeModal
         visible={reminderOpen}
@@ -212,25 +215,26 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1F2937',
   },
-  timeRow: {
+  timeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  timeInput: {
-    flex: 1,
+    justifyContent: 'space-between',
     height: 40,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
     paddingHorizontal: 12,
-    fontSize: 15,
-    color: '#1F2937',
-    textAlign: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  timeDash: {
-    fontSize: 13,
-    color: '#6B7280',
+  timeButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: ACCENT,
+    fontVariant: ['tabular-nums'],
+  },
+  timeButtonHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
   },
   reminderRow: {
     flexDirection: 'row',
