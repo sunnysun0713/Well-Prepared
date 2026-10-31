@@ -28,21 +28,21 @@ export function CalendarScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [busynessOpen, setBusynessOpen] = useState(false);
   const { getTasks } = useTasks();
-  const { starsFor } = useBusyness();
+  const { levelFor } = useBusyness();
 
-  // 当前视图月份:每日任务数对应的星级 + 每日收藏(紧急)任务数,用于网格星星标记
-  const { starsByDay, favoritesByDay } = useMemo(() => {
-    const stars: Record<number, number> = {};
+  // 当前视图月份:每日繁忙度等级(圆点颜色)+ 每日收藏(紧急)任务数,用于网格标记
+  const { levelsByDay, favoritesByDay } = useMemo(() => {
+    const levels: Record<number, number> = {};
     const favorites: Record<number, number> = {};
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
     for (let day = 1; day <= daysInMonth; day += 1) {
       const dayTasks = getTasks(new Date(viewYear, viewMonth, day));
-      if (dayTasks.length > 0) stars[day] = starsFor(dayTasks.length);
+      if (dayTasks.length > 0) levels[day] = levelFor(dayTasks.length);
       const favoriteCount = dayTasks.filter((t) => t.favorite).length;
       if (favoriteCount > 0) favorites[day] = favoriteCount;
     }
-    return { starsByDay: stars, favoritesByDay: favorites };
-  }, [getTasks, viewYear, viewMonth, starsFor]);
+    return { levelsByDay: levels, favoritesByDay: favorites };
+  }, [getTasks, viewYear, viewMonth, levelFor]);
 
   const goPrevMonth = () => {
     if (viewMonth === 0) {
@@ -128,7 +128,7 @@ export function CalendarScreen() {
         month={viewMonth}
         today={today}
         selected={selected}
-        starsByDay={starsByDay}
+        levelsByDay={levelsByDay}
         favoritesByDay={favoritesByDay}
         onSelectDay={handleSelectDay}
       />

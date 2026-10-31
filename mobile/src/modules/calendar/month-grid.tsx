@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BUSYNESS_STAR_COLOR, MAX_BUSYNESS_STARS } from '@/data/busyness';
+import { BUSYNESS_LEVEL_COUNT, busynessColorFor } from '@/data/busyness';
 
 const WEEK_HEADERS = ['一', '二', '三', '四', '五', '六', '日'];
 const WEEKEND_COLOR = '#DC2626';
@@ -12,21 +12,21 @@ interface Props {
   today: Date;
   /** 选中的日期(可能在其他月份) */
   selected: Date | null;
-  /** 每日任务数对应的星级(0-5),格内显示星星 */
-  starsByDay: Record<number, number>;
-  /** 每日收藏(紧急)任务数,对应数量的星星加深色边框 */
+  /** 每日繁忙度等级(0-5),格内圆点按等级取色 */
+  levelsByDay: Record<number, number>;
+  /** 每日收藏(紧急)任务数,大于 0 时圆点高亮 */
   favoritesByDay: Record<number, number>;
   /** 点击某一天(传当月日号) */
   onSelectDay: (day: number) => void;
 }
 
-/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,任务繁忙度用星星表示 */
+/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,繁忙度用彩色圆点表示 */
 export function MonthGrid({
   year,
   month,
   today,
   selected,
-  starsByDay,
+  levelsByDay,
   favoritesByDay,
   onSelectDay,
 }: Props) {
@@ -67,12 +67,11 @@ export function MonthGrid({
         const weekend = i % 7 >= 5;
         const todayCell = day !== null && isToday(day);
         const selectedCell = day !== null && isSelected(day);
-        const stars =
-          day !== null ? Math.min(starsByDay[day] ?? 0, MAX_BUSYNESS_STARS) : 0;
-        // 收藏数最多 5,不超过星星行长度;收藏多于星级时补足星星数量
-        const favorites =
-          day !== null ? Math.min(favoritesByDay[day] ?? 0, MAX_BUSYNESS_STARS) : 0;
-        const starCount = Math.max(stars, favorites);
+        const level =
+          day !== null ? Math.min(levelsByDay[day] ?? 0, BUSYNESS_LEVEL_COUNT) : 0;
+        const favorite = day !== null && (favoritesByDay[day] ?? 0) > 0;
+        const dotColor = busynessColorFor(level);
+        const showDot = level > 0 || favorite;
         return (
           <View key={`d-${i}`} style={styles.cell}>
             {day !== null && (
@@ -96,14 +95,12 @@ export function MonthGrid({
                     >
                       {day}
                     </Text>
-                    {starCount > 0 && (
-                      <View style={styles.starRow}>
-                        <Text style={styles.stars}>{'★'.repeat(starCount)}</Text>
-                        {favorites > 0 && (
-                          <Text style={[styles.stars, styles.favoriteStars]}>
-                            {'☆'.repeat(favorites)}
-                          </Text>
+                    {showDot && (
+                      <View style={styles.dotWrap}>
+                        {favorite && (
+                          <View style={[styles.dotRing, { borderColor: dotColor }]} />
                         )}
+                        <View style={[styles.taskDot, { backgroundColor: dotColor }]} />
                       </View>
                     )}
                   </View>
@@ -129,7 +126,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     width: '14.285%',
-    height: 50,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -139,9 +136,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   dayCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -159,20 +156,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1F2937',
   },
-  starRow: {
-    position: 'relative',
-  },
-  stars: {
-    fontSize: 10,
-    lineHeight: 12,
-    letterSpacing: -0.5,
-    color: BUSYNESS_STAR_COLOR,
-  },
-  favoriteStars: {
+  /** 原版圆点位置:绝对定位在日期下方 */
+  dotWrap: {
     position: 'absolute',
-    left: 0,
-    top: 0,
-    color: '#92400E',
+    bottom: 2,
+    width: 9,
+    height: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taskDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  /** 收藏任务:圆点外再画一圈同色描环,形成高亮 */
+  dotRing: {
+    position: 'absolute',
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    borderWidth: 1,
   },
   selectedText: {
     color: ACCENT,

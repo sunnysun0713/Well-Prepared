@@ -9,20 +9,32 @@ import {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** 默认映射:1 个任务 1 星,2 个 2 星……5 个及以上 5 星 */
+/** 默认映射:1 个任务 1 级,2 个 2 级……5 个及以上 5 级 */
 export const DEFAULT_BUSYNESS_THRESHOLDS = [1, 2, 3, 4, 5];
 
-/** 星级上限 */
-export const MAX_BUSYNESS_STARS = 5;
+/** 繁忙度等级数量(1-5 级) */
+export const BUSYNESS_LEVEL_COUNT = 5;
 
-/** 星星颜色(黄色) */
-export const BUSYNESS_STAR_COLOR = '#FACC15';
+/** 各等级圆点颜色:绿 → 黄 → 橙 → 橙红 → 红 */
+export const BUSYNESS_LEVEL_COLORS = [
+  '#22C55E',
+  '#EAB308',
+  '#F97316',
+  '#F4511E',
+  '#DC2626',
+] as const;
+
+/** 等级(1-5)对应的圆点颜色;0 级用中性灰 */
+export function busynessColorFor(level: number): string {
+  if (level <= 0) return '#9CA3AF';
+  return BUSYNESS_LEVEL_COLORS[Math.min(level, BUSYNESS_LEVEL_COUNT) - 1];
+}
 
 const STORAGE_KEY = 'busyness-thresholds-v1';
 
 /** 校验阈值:5 个正整数且严格递增 */
 export function isValidThresholds(values: number[]): boolean {
-  if (values.length !== MAX_BUSYNESS_STARS) return false;
+  if (values.length !== BUSYNESS_LEVEL_COUNT) return false;
   return values.every(
     (value, index) =>
       Number.isInteger(value) &&
@@ -32,11 +44,11 @@ export function isValidThresholds(values: number[]): boolean {
 }
 
 interface BusynessContextValue {
-  /** 第 i 项表示达到 i+1 星所需的最少任务数 */
+  /** 第 i 项表示达到 i+1 级所需的最少任务数 */
   thresholds: number[];
   saveThresholds: (values: number[]) => void;
-  /** 按任务数计算星级(0-5) */
-  starsFor: (count: number) => number;
+  /** 按任务数计算繁忙度等级(0-5) */
+  levelFor: (count: number) => number;
 }
 
 const BusynessContext = createContext<BusynessContextValue | null>(null);
@@ -83,20 +95,20 @@ export function BusynessProvider({ children }: { children: ReactNode }) {
     if (isValidThresholds(values)) setThresholds(values);
   }, []);
 
-  const starsFor = useCallback(
+  const levelFor = useCallback(
     (count: number): number => {
-      let stars = 0;
+      let level = 0;
       thresholds.forEach((threshold, index) => {
-        if (count >= threshold) stars = index + 1;
+        if (count >= threshold) level = index + 1;
       });
-      return Math.min(stars, MAX_BUSYNESS_STARS);
+      return Math.min(level, BUSYNESS_LEVEL_COUNT);
     },
     [thresholds],
   );
 
   const value = useMemo(
-    () => ({ thresholds, saveThresholds, starsFor }),
-    [thresholds, saveThresholds, starsFor],
+    () => ({ thresholds, saveThresholds, levelFor }),
+    [thresholds, saveThresholds, levelFor],
   );
 
   return <BusynessContext.Provider value={value}>{children}</BusynessContext.Provider>;

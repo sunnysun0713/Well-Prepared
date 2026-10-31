@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
-  BUSYNESS_STAR_COLOR,
+  BUSYNESS_LEVEL_COLORS,
+  BUSYNESS_LEVEL_COUNT,
   DEFAULT_BUSYNESS_THRESHOLDS,
   isValidThresholds,
-  MAX_BUSYNESS_STARS,
   useBusyness,
 } from '@/data/busyness';
 
@@ -54,11 +54,18 @@ export function BusynessModal({ visible, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>繁忙度指标</Text>
-          <Text style={styles.hint}>按当天任务数显示星星,最多 5 颗</Text>
+          <Text style={styles.hint}>按当天任务数显示圆点,颜色由绿到红表示忙碌程度</Text>
 
-          {Array.from({ length: MAX_BUSYNESS_STARS }, (_, index) => (
+          {Array.from({ length: BUSYNESS_LEVEL_COUNT }, (_, index) => (
             <View key={index} style={styles.row}>
-              <Text style={styles.stars}>{'★'.repeat(index + 1)}</Text>
+              <View style={styles.dotPreview}>
+                <View
+                  style={[
+                    styles.levelDot,
+                    { backgroundColor: BUSYNESS_LEVEL_COLORS[index] },
+                  ]}
+                />
+              </View>
               <Text style={styles.rowLabel}>任务数 ≥</Text>
               <TextInput
                 value={values[index] ?? ''}
@@ -126,11 +133,14 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  stars: {
+  dotPreview: {
     width: 62,
-    fontSize: 12,
-    color: BUSYNESS_STAR_COLOR,
-    letterSpacing: 1,
+    alignItems: 'center',
+  },
+  levelDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   rowLabel: {
     flex: 1,
