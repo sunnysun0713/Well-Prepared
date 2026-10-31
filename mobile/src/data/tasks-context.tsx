@@ -75,6 +75,7 @@ function reducer(state: TasksState, action: Action): TasksState {
           note: record.note,
           done: record.done,
           remindAdvanceMinutes: record.remindAdvanceMinutes,
+          categoryId: record.categoryId,
         };
         next[record.dateKey] = [...(next[record.dateKey] ?? []), task];
       }

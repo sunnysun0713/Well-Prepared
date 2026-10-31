@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { TASK_CATEGORIES } from '@/data/categories';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
@@ -40,6 +41,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const [startTime, setStartTime] = useState(task.startTime);
   const [endTime, setEndTime] = useState(task.endTime);
   const [note, setNote] = useState(task.note ?? '');
+  const [categoryId, setCategoryId] = useState<string | undefined>(task.categoryId);
   const [remind, setRemind] = useState<number | null>(task.remindAdvanceMinutes ?? null);
   const [customMinutes, setCustomMinutes] = useState('');
   const [error, setError] = useState('');
@@ -53,6 +55,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       setStartTime(task.startTime);
       setEndTime(task.endTime);
       setNote(task.note ?? '');
+      setCategoryId(task.categoryId);
       setRemind(task.remindAdvanceMinutes ?? null);
       setCustomMinutes('');
       setError('');
@@ -94,6 +97,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       startTime,
       endTime,
       note: note.trim() ? note.trim() : undefined,
+      categoryId,
       remindAdvanceMinutes: remind ?? undefined,
     });
     onClose();
@@ -153,7 +157,41 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
               maxLength={100}
             />
 
-            {/* 第 4 行:闹钟提醒(每行 3 个档位,固定排布不溢出) */}
+            {/* 第 4 行:分类标签 */}
+            <Text style={styles.label}>分类</Text>
+            <View style={styles.categoryGrid}>
+              {TASK_CATEGORIES.map((category) => {
+                const active = categoryId === category.id;
+                return (
+                  <Pressable
+                    key={category.id}
+                    onPress={() => setCategoryId(active ? undefined : category.id)}
+                    style={[
+                      styles.categoryChip,
+                      active && { borderColor: category.color, backgroundColor: '#FFFFFF' },
+                    ]}
+                  >
+                    <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        active && { color: category.color, fontWeight: '600' },
+                      ]}
+                    >
+                      {category.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                onPress={() => setCategoryId(undefined)}
+                style={[styles.categoryChip, !categoryId && styles.categoryChipNone]}
+              >
+                <Text style={styles.categoryText}>无标签</Text>
+              </Pressable>
+            </View>
+
+            {/* 第 5 行:闹钟提醒(每行 3 个档位,固定排布不溢出) */}
             <Text style={styles.label}>闹钟提醒</Text>
             <View style={styles.chipGrid}>
               {REMINDER_PRESETS.map((p) => {
@@ -304,6 +342,35 @@ const styles = StyleSheet.create({
   timeDash: {
     fontSize: 13,
     color: '#6B7280',
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  categoryChipNone: {
+    borderColor: '#D1D5DB',
+  },
+  categoryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#374151',
   },
   chipGrid: {
     flexDirection: 'row',

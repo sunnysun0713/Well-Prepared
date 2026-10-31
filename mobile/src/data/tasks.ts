@@ -13,6 +13,8 @@ export interface Task {
   remindAdvanceMinutes?: number;
   /** 云端对象 id;仅登录并同步后存在 */
   remoteId?: string;
+  /** 分类标签 id(见 categories.ts);未设置表示无标签 */
+  categoryId?: string;
 }
 
 /** 日期键 'YYYY-MM-DD' */

@@ -18,6 +18,7 @@ export interface CloudTaskRecord {
   note?: string;
   done?: boolean;
   remindAdvanceMinutes?: number;
+  categoryId?: string;
   deleted?: boolean;
 }
 
@@ -46,6 +47,7 @@ function toRecord(obj: AV.Object): CloudTaskRecord {
     note: readString('note') || undefined,
     done: Boolean(obj.get('done')),
     remindAdvanceMinutes: readNumber('remindAdvanceMinutes'),
+    categoryId: readString('categoryId') || undefined,
     deleted: Boolean(obj.get('deleted')),
   };
 }
@@ -76,6 +78,7 @@ export async function createCloudTask(dateKey: string, task: Task): Promise<stri
   if (task.remindAdvanceMinutes != null) {
     obj.set('remindAdvanceMinutes', task.remindAdvanceMinutes);
   }
+  if (task.categoryId) obj.set('categoryId', task.categoryId);
   obj.set('deleted', false);
 
   const acl = new AV.ACL();
@@ -103,6 +106,7 @@ export async function updateCloudTask(
   if ('remindAdvanceMinutes' in patch) {
     obj.set('remindAdvanceMinutes', patch.remindAdvanceMinutes ?? null);
   }
+  if ('categoryId' in patch) obj.set('categoryId', patch.categoryId ?? null);
   await obj.save();
 }
 

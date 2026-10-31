@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { getCategory } from '@/data/categories';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { TaskSettingsModal } from './TaskSettingsModal';
@@ -14,9 +15,11 @@ interface Props {
 export function TaskCard({ task, past }: Props) {
   const { updateTask } = useTasks();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const category = getCategory(task.categoryId);
 
   return (
     <View style={[styles.card, past && styles.past]}>
+      {category && <View style={[styles.categoryBar, { backgroundColor: category.color }]} />}
       {task.startTime || task.endTime ? (
         <Text style={styles.time}>
           {task.startTime}–{task.endTime}
@@ -59,6 +62,15 @@ const styles = StyleSheet.create({
   },
   past: {
     opacity: 0.5,
+  },
+  categoryBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
   },
   time: {
     fontSize: 13,
