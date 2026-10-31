@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { AddTaskModal } from '@/components/AddTaskModal';
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { TaskCard } from '@/components/TaskCard';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 
+const ACCENT = '#4F46E5';
 const pad = (n: number) => String(n).padStart(2, '0');
 
 interface Props {
@@ -15,6 +17,7 @@ interface Props {
 export function DayTasksPanel({ date }: Props) {
   const { getTasks, deleteTask } = useTasks();
   const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const tasks = getTasks(date);
 
   const now = new Date();
@@ -26,13 +29,18 @@ export function DayTasksPanel({ date }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {date.getMonth() + 1}月{date.getDate()}日 代办事项({tasks.length})
-      </Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>
+          {date.getMonth() + 1}月{date.getDate()}日 代办事项({tasks.length})
+        </Text>
+        <Pressable style={styles.addButton} onPress={() => setAddOpen(true)} hitSlop={6}>
+          <Text style={styles.addButtonText}>+ 新增</Text>
+        </Pressable>
+      </View>
       {tasks.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>当天暂无代办事项</Text>
-          <Text style={styles.emptyHint}>点右下角 + 添加任务</Text>
+          <Text style={styles.emptyHint}>点上方「+ 新增」添加任务</Text>
         </View>
       ) : (
         <View style={styles.list}>
@@ -63,6 +71,8 @@ export function DayTasksPanel({ date }: Props) {
           setPendingDelete(null);
         }}
       />
+
+      <AddTaskModal visible={addOpen} date={date} onClose={() => setAddOpen(false)} />
     </View>
   );
 }
@@ -76,11 +86,31 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E5E7EB',
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   title: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 12,
+  },
+  addButton: {
+    height: 26,
+    borderRadius: 13,
+    paddingHorizontal: 10,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: ACCENT,
   },
   list: {
     gap: 8,
