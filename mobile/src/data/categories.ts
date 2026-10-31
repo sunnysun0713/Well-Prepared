@@ -1,10 +1,13 @@
-/** 任务分类:预置颜色标签,新增分类在 TASK_CATEGORIES 里登记 */
+/** 任务分类:内置分类 + 用户自定义分类(见 categories-context.tsx) */
 export interface TaskCategory {
   id: string;
   name: string;
   color: string;
+  /** 用户自定义分类 */
+  custom?: boolean;
 }
 
+/** 内置分类 */
 export const TASK_CATEGORIES: TaskCategory[] = [
   { id: 'study', name: '学习', color: '#4F46E5' },
   { id: 'work', name: '工作', color: '#0EA5E9' },
@@ -13,8 +16,26 @@ export const TASK_CATEGORIES: TaskCategory[] = [
   { id: 'other', name: '其他', color: '#6B7280' },
 ];
 
-/** 按 id 取分类,未设置或未知 id 返回 undefined(无标签) */
-export function getCategory(id?: string): TaskCategory | undefined {
+/** 自定义分类可选颜色 */
+export const CATEGORY_COLORS = [
+  '#4F46E5',
+  '#0EA5E9',
+  '#10B981',
+  '#F59E0B',
+  '#EF4444',
+  '#8B5CF6',
+  '#EC4899',
+  '#6B7280',
+];
+
+/** 自定义分类名称最大长度(左侧标签竖排显示,过长会溢出) */
+export const CATEGORY_NAME_MAX_LENGTH = 4;
+
+/** 在分类列表中按 id 查找,未设置或未知 id 返回 undefined(无标签) */
+export function findCategory(
+  categories: TaskCategory[],
+  id?: string,
+): TaskCategory | undefined {
   if (!id) return undefined;
-  return TASK_CATEGORIES.find((c) => c.id === id);
+  return categories.find((c) => c.id === id);
 }

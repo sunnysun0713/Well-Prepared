@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { TASK_CATEGORIES } from '@/data/categories';
 import { dateKeyOf, type Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
+import { CategoryPicker } from './CategoryPicker';
 
 const ACCENT = '#4F46E5';
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -95,37 +95,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
             />
           </View>
           <Text style={styles.label}>分类</Text>
-          <View style={styles.categoryGrid}>
-            {TASK_CATEGORIES.map((category) => {
-              const active = categoryId === category.id;
-              return (
-                <Pressable
-                  key={category.id}
-                  onPress={() => setCategoryId(active ? undefined : category.id)}
-                  style={[
-                    styles.categoryChip,
-                    active && { borderColor: category.color, backgroundColor: '#FFFFFF' },
-                  ]}
-                >
-                  <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      active && { color: category.color, fontWeight: '600' },
-                    ]}
-                  >
-                    {category.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            <Pressable
-              onPress={() => setCategoryId(undefined)}
-              style={[styles.categoryChip, !categoryId && styles.categoryChipNone]}
-            >
-              <Text style={styles.categoryText}>无标签</Text>
-            </Pressable>
-          </View>
+          <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -198,35 +168,6 @@ const styles = StyleSheet.create({
   timeDash: {
     fontSize: 13,
     color: '#6B7280',
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    height: 28,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  categoryChipNone: {
-    borderColor: '#D1D5DB',
-  },
-  categoryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#374151',
   },
   error: {
     fontSize: 12,

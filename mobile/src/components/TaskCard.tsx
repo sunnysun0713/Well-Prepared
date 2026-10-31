@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { getCategory } from '@/data/categories';
+import { findCategory } from '@/data/categories';
+import { useCategories } from '@/data/categories-context';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { TaskSettingsModal } from './TaskSettingsModal';
@@ -13,24 +14,52 @@ interface Props {
   onRequestDelete?: () => void;
 }
 
-/** 任务卡片:起止时间 + 标题/备注 + 提醒标记 + 完成状态 + 设置入口 */
+/**
+ * 任务卡片:时间上下排列 + 标题/备注 + 分类色条。
+ * 点击卡片主体时,左侧色条变宽并竖排显示分类名,内容整体右移。
+ */
 export function TaskCard({ task, past, onRequestDelete }: Props) {
   const { updateTask } = useTasks();
+  const { categories } = useCategories();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const category = getCategory(task.categoryId);
+  const [expanded, setExpanded] = useState(false);
+  const category = findCategory(categories, task.categoryId);
+  const hasTime = Boolean(task.startTime || task.endTime);
 
   return (
     <View style={[styles.card, past && styles.past]}>
-      {category && <View style={[styles.categoryBar, { backgroundColor: category.color }]} />}
-      {task.startTime || task.endTime ? (
-        <Text style={styles.time}>
-          {task.startTime}–{task.endTime}
-        </Text>
-      ) : null}
-      <View style={styles.body}>
-        <Text style={[styles.title, task.done && styles.titleDone]}>{task.title}</Text>
-        {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
-      </View>
+      {category && (
+        <View
+          style={[
+            styles.categoryBar,
+            expanded && styles.categoryBarExpanded,
+            { backgroundColor: category.color },
+          ]}
+        >
+          {expanded && (
+            <Text style={styles.categoryLabel}>{category.name.split('').join('\n')}</Text>
+          )}
+        </View>
+      )}
+
+      <Pressable
+        style={[styles.main, expanded && category && styles.mainExpanded]}
+        onPress={() => {
+          if (category) setExpanded((value) => !value);
+        }}
+      >
+        {hasTime && (
+          <View style={styles.timeCol}>
+            <Text style={styles.time}>{task.startTime || '—'}</Text>
+            <Text style={styles.timeEnd}>{task.endTime || '—'}</Text>
+          </View>
+        )}
+        <View style={styles.body}>
+          <Text style={[styles.title, task.done && styles.titleDone]}>{task.title}</Text>
+          {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
+        </View>
+      </Pressable>
+
       {task.remindAdvanceMinutes != null && <Text style={styles.bell}>🔔</Text>}
       <Pressable onPress={() => updateTask(task.id, { done: !task.done })} hitSlop={8}>
         <Text style={[styles.status, task.done && styles.statusDone]}>
@@ -65,7 +94,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E5E7EB',
     paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingVertical: 12,
   },
   past: {
     opacity: 0.5,
@@ -78,13 +107,43 @@ const styles = StyleSheet.create({
     width: 3,
     borderTopLeftRadius: 12,
     borderBottomLeftRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  categoryBarExpanded: {
+    width: 34,
+  },
+  categoryLabel: {
+    fontSize: 11,
+    lineHeight: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  main: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  mainExpanded: {
+    marginLeft: 30,
+  },
+  timeCol: {
+    minWidth: 48,
+    gap: 1,
   },
   time: {
     fontSize: 13,
     fontWeight: '600',
     color: '#4F46E5',
     fontVariant: ['tabular-nums'],
-    minWidth: 80,
+  },
+  timeEnd: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontVariant: ['tabular-nums'],
   },
   body: {
     flex: 1,
