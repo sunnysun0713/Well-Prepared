@@ -57,3 +57,11 @@ export const DEFAULT_PRESET_ID = 'general';
 export function getPreset(id: string): ExtractionPreset {
   return PRESETS.find((p) => p.id === id) ?? PRESETS[0];
 }
+
+/** 预设显示名:有自定义名称时优先,否则用默认名 */
+export function presetDisplayName(
+  preset: ExtractionPreset,
+  customNames: Record<string, string>,
+): string {
+  return customNames[preset.id]?.trim() || preset.name;
+}

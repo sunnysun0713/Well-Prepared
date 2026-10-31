@@ -3,7 +3,7 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'rea
 import * as ImagePicker from 'expo-image-picker';
 import { extractTasksFromImage } from '@/ai/extract';
 import { commitImport, draftsOf } from '@/ai/import';
-import { getPreset } from '@/ai/presets';
+import { getPreset, presetDisplayName } from '@/ai/presets';
 import { getProvider } from '@/ai/providers';
 import { useAiSettings } from '@/ai/settings';
 import type { ExtractedTask } from '@/ai/types';
@@ -40,6 +40,7 @@ export function TaskImportScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
   const preset = getPreset(settings.presetId);
+  const presetName = presetDisplayName(preset, settings.presetNames);
 
   /** 从相册选图:图库在安卓/Web 无需权限,iOS 由系统弹窗处理 */
   const pickFromLibrary = async () => {
@@ -106,8 +107,8 @@ export function TaskImportScreen() {
         {/* 第一行:左上角预设选择器 + 右上角设置 */}
         <View style={styles.topRow}>
           <Pressable style={styles.presetChip} onPress={() => setPresetOpen(true)} hitSlop={4}>
-            <Text style={styles.presetChipText}>
-              {preset.icon} {preset.name} ▾
+            <Text style={styles.presetChipText} numberOfLines={1}>
+              {preset.icon} {presetName} ▾
             </Text>
           </Pressable>
           <Pressable style={styles.gearButton} onPress={() => setSettingsOpen(true)} hitSlop={8}>
@@ -208,6 +209,7 @@ const styles = StyleSheet.create({
   },
   presetChip: {
     height: 28,
+    maxWidth: '72%',
     borderRadius: 14,
     paddingHorizontal: 10,
     backgroundColor: '#EEF2FF',
@@ -215,6 +217,7 @@ const styles = StyleSheet.create({
     borderColor: '#C7D2FE',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 1,
   },
   presetChipText: {
     fontSize: 12,

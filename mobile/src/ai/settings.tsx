@@ -19,6 +19,8 @@ export interface AiSettings {
   autoImport: boolean;
   /** 当前提取预设模板 id(见 presets.ts) */
   presetId: string;
+  /** 预设自定义名称:presetId → 名称;未设置的预设使用默认名 */
+  presetNames: Record<string, string>;
 }
 
 const STORAGE_KEY = 'ai-settings-v1';
@@ -27,7 +29,18 @@ const DEFAULT_SETTINGS: AiSettings = {
   apiKey: '',
   autoImport: false,
   presetId: DEFAULT_PRESET_ID,
+  presetNames: {},
 };
+
+/** 解析存档中的预设名称:只保留非空字符串值 */
+function parsePresetNames(value: unknown): Record<string, string> {
+  if (typeof value !== 'object' || value === null) return {};
+  const names: Record<string, string> = {};
+  for (const [id, name] of Object.entries(value)) {
+    if (typeof name === 'string' && name.trim()) names[id] = name;
+  }
+  return names;
+}
 
 type Action = { type: 'REPLACE'; settings: AiSettings };
 
@@ -72,6 +85,7 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
                 typeof parsed.autoImport === 'boolean' ? parsed.autoImport : DEFAULT_SETTINGS.autoImport,
               presetId:
                 typeof parsed.presetId === 'string' ? parsed.presetId : DEFAULT_SETTINGS.presetId,
+              presetNames: parsePresetNames(parsed.presetNames),
             },
           });
         } catch {
