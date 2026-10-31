@@ -9,6 +9,14 @@ import {
   type ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAccount } from '@/account/account-context';
+import {
+  createCloudTask,
+  deleteCloudTask,
+  fetchMyTasks,
+  updateCloudTask,
+  type CloudTaskRecord,
+} from '@/cloud/tasks';
 import { cancelTaskReminder, syncTaskReminder } from '@/notifications';
 import { buildInitialTasks, dateKeyOf, type Task } from './tasks';
 
@@ -22,7 +30,8 @@ type Action =
   | { type: 'REPLACE'; state: TasksState }
   | { type: 'ADD_TASK'; dateKey: string; task: Task }
   | { type: 'UPDATE_TASK'; id: string; patch: Partial<Omit<Task, 'id'>> }
-  | { type: 'DELETE_TASK'; id: string };
+  | { type: 'DELETE_TASK'; id: string }
+  | { type: 'MERGE_REMOTE'; records: CloudTaskRecord[] };
 
 function reducer(state: TasksState, action: Action): TasksState {
   switch (action.type) {
@@ -44,6 +53,33 @@ function reducer(state: TasksState, action: Action): TasksState {
           .map(([key, tasks]) => [key, tasks.filter((t) => t.id !== action.id)] as const)
           .filter(([, tasks]) => tasks.length > 0),
       );
+    case 'MERGE_REMOTE': {
+      // 云端记录覆盖本地同 remoteId/localId 的版本;软删除记录同时删除本地任务
+      const next: TasksState = {};
+      for (const [key, tasks] of Object.entries(state)) next[key] = tasks.slice();
+      for (const record of action.records) {
+        for (const key of Object.keys(next)) {
+          const filtered = next[key].filter(
+            (t) => t.remoteId !== record.remoteId && t.id !== record.localId,
+          );
+          if (filtered.length > 0) next[key] = filtered;
+          else delete next[key];
+        }
+        if (record.deleted) continue;
+        const task: Task = {
+          id: record.localId || `${record.dateKey}-r${record.remoteId}`,
+          remoteId: record.remoteId,
+          title: record.title,
+          startTime: record.startTime,
+          endTime: record.endTime,
+          note: record.note,
+          done: record.done,
+          remindAdvanceMinutes: record.remindAdvanceMinutes,
+        };
+        next[record.dateKey] = [...(next[record.dateKey] ?? []), task];
+      }
+      return next;
+    }
   }
 }
 
@@ -56,12 +92,17 @@ interface TasksContextValue {
   updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>) => void;
   /** 按任务 id 删除 */
   deleteTask: (id: string) => void;
+  /** 从云端拉取并合并任务,返回云端记录数 */
+  syncNow: () => Promise<number>;
+  /** 把没有云端 id 的本地任务上传,返回上传条数 */
+  uploadLocalTasks: () => Promise<number>;
 }
 
 const TasksContext = createContext<TasksContextValue | null>(null);
 
 /** 任务状态提供者:AsyncStorage 本地持久化,重启后修改依然保留 */
 export function TasksProvider({ children }: { children: ReactNode }) {
+  const { user } = useAccount();
   const [state, dispatch] = useReducer(reducer, undefined, buildInitialTasks);
   // 本地存档读取完成后才允许回写,避免用示例数据覆盖存档
   const [hydrated, setHydrated] = useState(false);
@@ -112,12 +153,27 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [state],
   );
 
-  const addTask = useCallback((date: Date, task: Task) => {
-    const key = dateKeyOf(date);
-    dispatch({ type: 'ADD_TASK', dateKey: key, task });
-    // 有提醒时排程本地通知(异步,不阻塞界面)
-    void syncTaskReminder(key, task);
-  }, []);
+  const addTask = useCallback(
+    (date: Date, task: Task) => {
+      const key = dateKeyOf(date);
+      dispatch({ type: 'ADD_TASK', dateKey: key, task });
+      // 有提醒时排程本地通知(异步,不阻塞界面)
+      void syncTaskReminder(key, task);
+      // 已登录时同步到云端,成功后回填 remoteId
+      if (user) {
+        void createCloudTask(key, task)
+          .then((remoteId) => {
+            if (remoteId) {
+              dispatch({ type: 'UPDATE_TASK', id: task.id, patch: { remoteId } });
+            }
+          })
+          .catch(() => {
+            // 网络异常时保留本地任务,可稍后手动上传
+          });
+      }
+    },
+    [user],
+  );
 
   const updateTask = useCallback(
     (id: string, patch: Partial<Omit<Task, 'id'>>) => {
@@ -127,21 +183,79 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         const current = tasks.find((t) => t.id === id);
         if (current) {
           void syncTaskReminder(key, { ...current, ...patch });
+          if (user && current.remoteId) {
+            void updateCloudTask(current.remoteId, patch).catch(() => {
+              // 云端更新失败时以本地为准,下次同步会覆盖
+            });
+          }
           break;
         }
       }
     },
-    [state],
+    [state, user],
   );
 
-  const deleteTask = useCallback((id: string) => {
-    dispatch({ type: 'DELETE_TASK', id });
-    void cancelTaskReminder(id);
-  }, []);
+  const deleteTask = useCallback(
+    (id: string) => {
+      let remoteId: string | undefined;
+      for (const tasks of Object.values(state)) {
+        const found = tasks.find((t) => t.id === id);
+        if (found) {
+          remoteId = found.remoteId;
+          break;
+        }
+      }
+      dispatch({ type: 'DELETE_TASK', id });
+      void cancelTaskReminder(id);
+      if (user && remoteId) {
+        void deleteCloudTask(remoteId).catch(() => {
+          // 云端删除失败时保留记录,下次同步仍会显示
+        });
+      }
+    },
+    [state, user],
+  );
+
+  /** 拉取云端任务并合并到本地 */
+  const syncNow = useCallback(async () => {
+    if (!user) return 0;
+    const records = await fetchMyTasks();
+    dispatch({ type: 'MERGE_REMOTE', records });
+    return records.length;
+  }, [user]);
+
+  /** 上传没有云端 id 的本地任务 */
+  const uploadLocalTasks = useCallback(async () => {
+    if (!user) return 0;
+    let count = 0;
+    for (const [key, tasks] of Object.entries(state)) {
+      for (const task of tasks) {
+        if (task.remoteId) continue;
+        try {
+          const remoteId = await createCloudTask(key, task);
+          if (remoteId) {
+            dispatch({ type: 'UPDATE_TASK', id: task.id, patch: { remoteId } });
+            count += 1;
+          }
+        } catch {
+          // 单条失败不影响其余任务
+        }
+      }
+    }
+    return count;
+  }, [state, user]);
+
+  // 登录后自动拉取云端任务;等本地存档读取完成,避免合并结果被覆盖
+  useEffect(() => {
+    if (!user || !hydrated) return;
+    void syncNow().catch(() => {
+      // 网络异常时保持本地数据
+    });
+  }, [user, hydrated, syncNow]);
 
   const value = useMemo(
-    () => ({ getTasks, addTask, updateTask, deleteTask }),
-    [getTasks, addTask, updateTask, deleteTask],
+    () => ({ getTasks, addTask, updateTask, deleteTask, syncNow, uploadLocalTasks }),
+    [getTasks, addTask, updateTask, deleteTask, syncNow, uploadLocalTasks],
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

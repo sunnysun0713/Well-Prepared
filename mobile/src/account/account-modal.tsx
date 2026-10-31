@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTasks } from '@/data/tasks-context';
 import { useAccount } from './account-context';
 
 const ACCENT = '#4F46E5';
@@ -55,6 +56,9 @@ export function AccountModal({ visible, onClose }: Props) {
   const [profileQq, setProfileQq] = useState(user?.qq ?? '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
+  const { syncNow, uploadLocalTasks } = useTasks();
 
   // 打开弹窗时重置表单(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
@@ -72,6 +76,8 @@ export function AccountModal({ visible, onClose }: Props) {
       setProfileQq(user?.qq ?? '');
       setError('');
       setBusy(false);
+      setSyncBusy(false);
+      setSyncMsg('');
     }
   }
 
@@ -132,6 +138,24 @@ export function AccountModal({ visible, onClose }: Props) {
     void run(async () => {
       await logout();
     });
+  };
+
+  const doSync = () => {
+    setSyncMsg('');
+    setSyncBusy(true);
+    void syncNow()
+      .then((count) => setSyncMsg(`已同步 ${count} 条云端任务`))
+      .catch(() => setSyncMsg('同步失败,请检查网络'))
+      .finally(() => setSyncBusy(false));
+  };
+
+  const doUpload = () => {
+    setSyncMsg('');
+    setSyncBusy(true);
+    void uploadLocalTasks()
+      .then((count) => setSyncMsg(`已上传 ${count} 条本地任务`))
+      .catch(() => setSyncMsg('上传失败,请检查网络'))
+      .finally(() => setSyncBusy(false));
   };
 
   const avatarText = (user?.nickname || user?.username || '?').slice(0, 1).toUpperCase();
@@ -308,6 +332,28 @@ export function AccountModal({ visible, onClose }: Props) {
                     <Text style={styles.friendCode}>{user.friendCode || '—'}</Text>
                     <Text style={styles.friendCodeHint}>把这个码发给好友,对方就能添加你</Text>
                   </View>
+
+                  <Text style={styles.label}>云端同步</Text>
+                  <View style={styles.syncRow}>
+                    <Pressable
+                      style={[styles.syncButton, syncBusy && styles.syncButtonDisabled]}
+                      disabled={syncBusy}
+                      onPress={doSync}
+                    >
+                      <Text style={styles.syncButtonText}>
+                        {syncBusy ? '处理中…' : '立即同步'}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.syncButton, syncBusy && styles.syncButtonDisabled]}
+                      disabled={syncBusy}
+                      onPress={doUpload}
+                    >
+                      <Text style={styles.syncButtonText}>上传本地任务</Text>
+                    </Pressable>
+                  </View>
+                  {syncMsg ? <Text style={styles.syncMsg}>{syncMsg}</Text> : null}
+
                   {error ? <Text style={styles.error}>{error}</Text> : null}
                   <Pressable style={[styles.button, styles.confirmButton, styles.authButton]} onPress={saveProfile}>
                     {busy ? (
@@ -513,6 +559,32 @@ const styles = StyleSheet.create({
   friendCodeHint: {
     fontSize: 11,
     color: '#6B7280',
+  },
+  syncRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  syncButton: {
+    flex: 1,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  syncButtonDisabled: {
+    opacity: 0.5,
+  },
+  syncButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: ACCENT,
+  },
+  syncMsg: {
+    fontSize: 11,
+    color: '#059669',
+    marginTop: 6,
+    textAlign: 'center',
   },
   footerRow: {
     flexDirection: 'row',

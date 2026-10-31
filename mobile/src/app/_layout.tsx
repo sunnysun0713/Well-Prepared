@@ -13,16 +13,16 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <TasksProvider>
-      <AiSettingsProvider>
-        <AccountProvider>
+    <AccountProvider>
+      <TasksProvider>
+        <AiSettingsProvider>
           <StatusBar style="dark" />
           <Stack>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="module-manager" options={{ title: '管理模块' }} />
           </Stack>
-        </AccountProvider>
-      </AiSettingsProvider>
-    </TasksProvider>
+        </AiSettingsProvider>
+      </TasksProvider>
+    </AccountProvider>
   );
 }

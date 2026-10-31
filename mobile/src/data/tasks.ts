@@ -11,6 +11,8 @@ export interface Task {
   done?: boolean;
   /** 提前提醒的分钟数;未设置表示无提醒 */
   remindAdvanceMinutes?: number;
+  /** 云端对象 id;仅登录并同步后存在 */
+  remoteId?: string;
 }
 
 /** 日期键 'YYYY-MM-DD' */
