@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     width: '14.285%',
-    height: 44,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -118,9 +118,9 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   dayCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -139,9 +139,9 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   stars: {
-    fontSize: 6,
-    lineHeight: 7,
-    letterSpacing: 0.5,
+    fontSize: 10,
+    lineHeight: 12,
+    letterSpacing: -0.5,
     color: BUSYNESS_STAR_COLOR,
   },
   selectedText: {
