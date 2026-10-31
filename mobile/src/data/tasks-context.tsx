@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { cancelTaskReminder, syncTaskReminder } from '@/notifications';
 import { buildInitialTasks, dateKeyOf, type Task } from './tasks';
 
 /** 本地存档键;数据结构变化时改版本号,避免读到旧格式 */
@@ -78,7 +79,12 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       if (raw) {
         try {
-          dispatch({ type: 'REPLACE', state: JSON.parse(raw) });
+          const parsed = JSON.parse(raw) as TasksState;
+          dispatch({ type: 'REPLACE', state: parsed });
+          // 启动时按存档重排全部提醒(覆盖本功能上线前只存了数字的旧任务)
+          for (const [key, tasks] of Object.entries(parsed)) {
+            for (const task of tasks) void syncTaskReminder(key, task);
+          }
         } catch {
           // 存档损坏时继续使用示例数据
         }
@@ -106,20 +112,32 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [state],
   );
 
-  const addTask = useCallback(
-    (date: Date, task: Task) => dispatch({ type: 'ADD_TASK', dateKey: dateKeyOf(date), task }),
-    [],
-  );
+  const addTask = useCallback((date: Date, task: Task) => {
+    const key = dateKeyOf(date);
+    dispatch({ type: 'ADD_TASK', dateKey: key, task });
+    // 有提醒时排程本地通知(异步,不阻塞界面)
+    void syncTaskReminder(key, task);
+  }, []);
 
   const updateTask = useCallback(
-    (id: string, patch: Partial<Omit<Task, 'id'>>) => dispatch({ type: 'UPDATE_TASK', id, patch }),
-    [],
+    (id: string, patch: Partial<Omit<Task, 'id'>>) => {
+      dispatch({ type: 'UPDATE_TASK', id, patch });
+      // 找到任务所属日期,按更新后的完整任务重排提醒
+      for (const [key, tasks] of Object.entries(state)) {
+        const current = tasks.find((t) => t.id === id);
+        if (current) {
+          void syncTaskReminder(key, { ...current, ...patch });
+          break;
+        }
+      }
+    },
+    [state],
   );
 
-  const deleteTask = useCallback(
-    (id: string) => dispatch({ type: 'DELETE_TASK', id }),
-    [],
-  );
+  const deleteTask = useCallback((id: string) => {
+    dispatch({ type: 'DELETE_TASK', id });
+    void cancelTaskReminder(id);
+  }, []);
 
   const value = useMemo(
     () => ({ getTasks, addTask, updateTask, deleteTask }),

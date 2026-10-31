@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
+import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
 
 const ACCENT = '#4F46E5';
 
@@ -70,7 +71,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
     }
   };
 
-  const confirm = () => {
+  const confirm = async () => {
     const t = title.trim();
     if (!t) {
       setError('请输入任务名');
@@ -79,6 +80,14 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
     if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime) || endTime <= startTime) {
       setError('时间格式应为 HH:mm,且结束时间晚于起始时间');
       return;
+    }
+    // 设置提醒前确认通知权限,避免"设了却不响"
+    if (remind != null && NOTIFICATIONS_SUPPORTED) {
+      const granted = await ensureNotificationPermission();
+      if (!granted) {
+        setError('通知权限被拒绝,提醒不会生效;请开启权限或关闭提醒后再保存');
+        return;
+      }
     }
     updateTask(task.id, {
       title: t,
@@ -191,6 +200,9 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
               </Pressable>
             </View>
 
+            {!NOTIFICATIONS_SUPPORTED && (
+              <Text style={styles.reminderHint}>提醒仅在手机上生效,浏览器预览不支持</Text>
+            )}
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <View style={styles.actions}>
@@ -345,6 +357,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#374151',
+  },
+  reminderHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 6,
   },
   error: {
     fontSize: 12,

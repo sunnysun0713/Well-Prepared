@@ -1,9 +1,16 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AiSettingsProvider } from '@/ai/settings';
 import { TasksProvider } from '@/data/tasks-context';
+import { ensureNotificationChannel } from '@/notifications';
 
 export default function RootLayout() {
+  // 创建安卓通知渠道(Android 13+ 权限弹窗的前提)
+  useEffect(() => {
+    void ensureNotificationChannel();
+  }, []);
+
   return (
     <TasksProvider>
       <AiSettingsProvider>
