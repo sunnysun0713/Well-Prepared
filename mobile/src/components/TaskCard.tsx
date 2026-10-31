@@ -5,9 +5,7 @@ import { useCategories } from '@/data/categories-context';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { TaskSettingsModal } from './TaskSettingsModal';
-import { TimeWheelModal } from './TimeWheelModal';
-
-const pad = (n: number) => String(n).padStart(2, '0');
+import { TimeRangeModal } from './TimeRangeModal';
 
 interface Props {
   task: Task;
@@ -25,7 +23,7 @@ export function TaskCard({ task, past, onRequestDelete }: Props) {
   const { updateTask } = useTasks();
   const { categories } = useCategories();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [timeTarget, setTimeTarget] = useState<'start' | 'end' | null>(null);
+  const [timeOpen, setTimeOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const category = findCategory(categories, task.categoryId);
   const hasTime = Boolean(task.startTime || task.endTime);
@@ -48,14 +46,12 @@ export function TaskCard({ task, past, onRequestDelete }: Props) {
 
       <View style={[styles.main, expanded && category && styles.mainExpanded]}>
         {hasTime && (
-          <View style={styles.timeCol}>
-            <Pressable onPress={() => setTimeTarget('start')} hitSlop={6}>
+          <Pressable onPress={() => setTimeOpen(true)} hitSlop={6}>
+            <View style={styles.timeCol}>
               <Text style={styles.time}>{task.startTime || '—'}</Text>
-            </Pressable>
-            <Pressable onPress={() => setTimeTarget('end')} hitSlop={6}>
               <Text style={styles.timeEnd}>{task.endTime || '—'}</Text>
-            </Pressable>
-          </View>
+            </View>
+          </Pressable>
         )}
         <Pressable
           style={styles.body}
@@ -83,31 +79,15 @@ export function TaskCard({ task, past, onRequestDelete }: Props) {
         </Pressable>
       ) : null}
 
-      <TimeWheelModal
-        visible={timeTarget !== null}
-        title={timeTarget === 'end' ? '设置结束时间' : '设置起始时间'}
+      <TimeRangeModal
+        visible={timeOpen}
         subtitle={task.title}
-        initialTime={timeTarget === 'end' ? task.endTime : task.startTime}
-        validate={
-          timeTarget === 'end'
-            ? (time) => (time <= task.startTime ? '结束时间需晚于起始时间' : null)
-            : undefined
-        }
-        onCancel={() => setTimeTarget(null)}
-        onConfirm={(time) => {
-          if (timeTarget === 'end') {
-            updateTask(task.id, { endTime: time });
-          } else {
-            // 起始时间晚于结束时间时,结束时间自动顺延 30 分钟
-            let end = task.endTime;
-            if (!end || end <= time) {
-              const [h, m] = time.split(':').map(Number);
-              const total = Math.min(h * 60 + m + 30, 23 * 60 + 59);
-              end = `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
-            }
-            updateTask(task.id, { startTime: time, endTime: end });
-          }
-          setTimeTarget(null);
+        initialStart={task.startTime}
+        initialEnd={task.endTime}
+        onCancel={() => setTimeOpen(false)}
+        onConfirm={(start, end) => {
+          updateTask(task.id, { startTime: start, endTime: end });
+          setTimeOpen(false);
         }}
       />
       <TaskSettingsModal

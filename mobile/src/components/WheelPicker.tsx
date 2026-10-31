@@ -10,11 +10,6 @@ import {
   type ScrollViewInstance,
 } from 'react-native';
 
-const ITEM_HEIGHT = 36;
-const VISIBLE_COUNT = 5;
-// 上下留白,让第一项和最后一项也能滚动到窗口中心
-const PADDING = ((VISIBLE_COUNT - 1) / 2) * ITEM_HEIGHT;
-
 interface Props {
   options: string[];
   /** 初始选中下标 */
@@ -22,14 +17,26 @@ interface Props {
   onChange: (index: number) => void;
   /** 滚轮窗口宽度 */
   width?: number;
+  /** 单项高度,默认 36 */
+  itemHeight?: number;
+  /** 可见项数(奇数),默认 5 */
+  visibleCount?: number;
 }
 
 /** 滚轮选择器:滚动中实时选中居中项,停止后强制吸附到单项居中 */
-export function WheelPicker({ options, value, onChange, width = 120 }: Props) {
+export function WheelPicker({
+  options,
+  value,
+  onChange,
+  width = 120,
+  itemHeight = 36,
+  visibleCount = 5,
+}: Props) {
+  const padding = ((visibleCount - 1) / 2) * itemHeight;
   const scrollRef = useRef<ScrollViewInstance>(null);
   const [selected, setSelected] = useState(value);
   const dragging = useRef(false);
-  const lastOffset = useRef(value * ITEM_HEIGHT);
+  const lastOffset = useRef(value * itemHeight);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(false);
 
@@ -37,9 +44,9 @@ export function WheelPicker({ options, value, onChange, width = 120 }: Props) {
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
-      scrollRef.current?.scrollTo({ y: value * ITEM_HEIGHT, animated: false });
+      scrollRef.current?.scrollTo({ y: value * itemHeight, animated: false });
     }
-  }, [value]);
+  }, [value, itemHeight]);
 
   const clearTimer = () => {
     if (settleTimer.current) {
@@ -49,12 +56,12 @@ export function WheelPicker({ options, value, onChange, width = 120 }: Props) {
   };
 
   const scrollToIndex = (i: number, animated = true) => {
-    scrollRef.current?.scrollTo({ y: i * ITEM_HEIGHT, animated });
+    scrollRef.current?.scrollTo({ y: i * itemHeight, animated });
   };
 
   /** 当前偏移对应的选项下标(夹在有效范围) */
   const indexAt = (offsetY: number) =>
-    Math.max(0, Math.min(options.length - 1, Math.round(offsetY / ITEM_HEIGHT)));
+    Math.max(0, Math.min(options.length - 1, Math.round(offsetY / itemHeight)));
 
   /** 滚动中:实时选中经过中心阴影的项 */
   const track = (offsetY: number) => {
@@ -68,7 +75,7 @@ export function WheelPicker({ options, value, onChange, width = 120 }: Props) {
   const settle = (offsetY: number) => {
     lastOffset.current = offsetY;
     const i = indexAt(offsetY);
-    if (Math.abs(offsetY - i * ITEM_HEIGHT) > 0.5) {
+    if (Math.abs(offsetY - i * itemHeight) > 0.5) {
       scrollToIndex(i);
     }
     setSelected(i);
@@ -94,16 +101,19 @@ export function WheelPicker({ options, value, onChange, width = 120 }: Props) {
   };
 
   return (
-    <View style={[styles.window, { width }]}>
-      <View pointerEvents="none" style={styles.band} />
+    <View style={[styles.window, { width, height: visibleCount * itemHeight }]}>
+      <View
+        pointerEvents="none"
+        style={[styles.band, { top: padding, height: itemHeight }]}
+      />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        snapToInterval={ITEM_HEIGHT}
+        snapToInterval={itemHeight}
         scrollEventThrottle={16}
         decelerationRate="fast"
-        contentOffset={{ x: 0, y: value * ITEM_HEIGHT }}
-        contentContainerStyle={styles.scrollContent}
+        contentOffset={{ x: 0, y: value * itemHeight }}
+        contentContainerStyle={{ paddingVertical: padding }}
         onScrollBeginDrag={() => {
           dragging.current = true;
           clearTimer();
@@ -120,7 +130,11 @@ export function WheelPicker({ options, value, onChange, width = 120 }: Props) {
         }
       >
         {options.map((opt, i) => (
-          <Pressable key={opt} onPress={() => pick(i)} style={styles.item}>
+          <Pressable
+            key={opt}
+            onPress={() => pick(i)}
+            style={[styles.item, { height: itemHeight }]}
+          >
             <Text style={[styles.itemText, i === selected && styles.itemTextActive]}>
               {opt}
             </Text>
@@ -133,22 +147,16 @@ export function WheelPicker({ options, value, onChange, width = 120 }: Props) {
 
 const styles = StyleSheet.create({
   window: {
-    height: VISIBLE_COUNT * ITEM_HEIGHT,
+    overflow: 'hidden',
   },
   band: {
     position: 'absolute',
-    top: PADDING,
     left: 0,
     right: 0,
-    height: ITEM_HEIGHT,
     backgroundColor: '#F3F4F6',
     borderRadius: 8,
   },
-  scrollContent: {
-    paddingVertical: PADDING,
-  },
   item: {
-    height: ITEM_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
