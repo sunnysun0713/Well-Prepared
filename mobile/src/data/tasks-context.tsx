@@ -20,7 +20,8 @@ type TasksState = Record<string, Task[]>;
 type Action =
   | { type: 'REPLACE'; state: TasksState }
   | { type: 'ADD_TASK'; dateKey: string; task: Task }
-  | { type: 'UPDATE_TASK'; id: string; patch: Partial<Omit<Task, 'id'>> };
+  | { type: 'UPDATE_TASK'; id: string; patch: Partial<Omit<Task, 'id'>> }
+  | { type: 'DELETE_TASK'; id: string };
 
 function reducer(state: TasksState, action: Action): TasksState {
   switch (action.type) {
@@ -35,6 +36,13 @@ function reducer(state: TasksState, action: Action): TasksState {
           tasks.map((t) => (t.id === action.id ? { ...t, ...action.patch } : t)),
         ]),
       );
+    case 'DELETE_TASK':
+      // 删除后为空的日期键一并移除,保持存档整洁
+      return Object.fromEntries(
+        Object.entries(state)
+          .map(([key, tasks]) => [key, tasks.filter((t) => t.id !== action.id)] as const)
+          .filter(([, tasks]) => tasks.length > 0),
+      );
   }
 }
 
@@ -45,6 +53,8 @@ interface TasksContextValue {
   addTask: (date: Date, task: Task) => void;
   /** 按任务 id 更新(标题/时间/备注/提醒等) */
   updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>) => void;
+  /** 按任务 id 删除 */
+  deleteTask: (id: string) => void;
 }
 
 const TasksContext = createContext<TasksContextValue | null>(null);
@@ -106,7 +116,15 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const value = useMemo(() => ({ getTasks, addTask, updateTask }), [getTasks, addTask, updateTask]);
+  const deleteTask = useCallback(
+    (id: string) => dispatch({ type: 'DELETE_TASK', id }),
+    [],
+  );
+
+  const value = useMemo(
+    () => ({ getTasks, addTask, updateTask, deleteTask }),
+    [getTasks, addTask, updateTask, deleteTask],
+  );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
 }

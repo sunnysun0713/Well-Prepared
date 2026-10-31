@@ -33,7 +33,7 @@ interface Props {
 
 /** 任务设置弹窗,功能分行排列:任务名(改名)→ 时间 → 备注 → 闹钟提醒 */
 export function TaskSettingsModal({ visible, task, onClose }: Props) {
-  const { updateTask } = useTasks();
+  const { updateTask, deleteTask } = useTasks();
   const [prevVisible, setPrevVisible] = useState(visible);
   const [title, setTitle] = useState(task.title);
   const [startTime, setStartTime] = useState(task.startTime);
@@ -42,6 +42,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const [remind, setRemind] = useState<number | null>(task.remindAdvanceMinutes ?? null);
   const [customMinutes, setCustomMinutes] = useState('');
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // 打开弹窗时重置为任务当前值(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
@@ -54,6 +55,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       setRemind(task.remindAdvanceMinutes ?? null);
       setCustomMinutes('');
       setError('');
+      setConfirmDelete(false);
     }
   }
 
@@ -199,6 +201,34 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
                 <Text style={styles.confirmText}>确定</Text>
               </Pressable>
             </View>
+
+            {/* 删除入口:两步确认,避免误删 */}
+            {confirmDelete ? (
+              <View style={styles.deleteConfirm}>
+                <Text style={styles.deleteConfirmText}>确定删除「{task.title}」？不可恢复</Text>
+                <View style={styles.deleteConfirmActions}>
+                  <Pressable
+                    style={styles.deleteCancelButton}
+                    onPress={() => setConfirmDelete(false)}
+                  >
+                    <Text style={styles.deleteCancelText}>取消</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.deleteDangerButton}
+                    onPress={() => {
+                      deleteTask(task.id);
+                      onClose();
+                    }}
+                  >
+                    <Text style={styles.deleteDangerText}>删除</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable style={styles.deleteButton} onPress={() => setConfirmDelete(true)}>
+                <Text style={styles.deleteText}>删除任务</Text>
+              </Pressable>
+            )}
           </Pressable>
         </Pressable>
       </KeyboardAvoidingView>
@@ -347,6 +377,61 @@ const styles = StyleSheet.create({
   confirmText: {
     fontSize: 14,
     fontWeight: '500',
+    color: '#FFFFFF',
+  },
+  deleteButton: {
+    marginTop: 10,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#DC2626',
+  },
+  deleteConfirm: {
+    marginTop: 10,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 8,
+  },
+  deleteConfirmText: {
+    fontSize: 12,
+    color: '#B91C1C',
+    textAlign: 'center',
+  },
+  deleteConfirmActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  deleteCancelButton: {
+    flex: 1,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteCancelText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  deleteDangerButton: {
+    flex: 1,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteDangerText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
 });
