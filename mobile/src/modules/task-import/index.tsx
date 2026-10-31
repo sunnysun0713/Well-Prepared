@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { extractTasksFromImage } from '@/ai/extract';
+import { getProvider } from '@/ai/providers';
+import { useAiSettings } from '@/ai/settings';
+import type { ExtractedTask } from '@/ai/types';
+import { AiSettingsModal } from './ai-settings-modal';
+import { ResultModal } from './result-modal';
 
 const ACCENT = '#4F46E5';
 
@@ -11,10 +17,15 @@ interface PickedImage {
   height: number;
 }
 
-/** 任务载入模块主界面:选图/拍照 + 预览 + AI 提取入口 */
+/** 任务载入模块主界面:选图/拍照 + 预览 + AI 提取任务 */
 export function TaskImportScreen() {
+  const { settings } = useAiSettings();
   const [image, setImage] = useState<PickedImage | null>(null);
   const [error, setError] = useState('');
+  const [extracting, setExtracting] = useState(false);
+  const [result, setResult] = useState<ExtractedTask[]>([]);
+  const [resultOpen, setResultOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   /** 从相册选图:图库在安卓/Web 无需权限,iOS 由系统弹窗处理 */
   const pickFromLibrary = async () => {
@@ -44,11 +55,36 @@ export function TaskImportScreen() {
     }
   };
 
+  /** AI 提取:压缩图片 → 视觉服务 → 归一化,成功后弹出结果列表 */
+  const runExtraction = async () => {
+    if (!image || extracting) return;
+    setError('');
+    setExtracting(true);
+    try {
+      const provider = getProvider(settings.providerId);
+      if (!provider.mock && !settings.apiKey) {
+        throw new Error('请先在右上角设置中填写 API Key');
+      }
+      const tasks = await extractTasksFromImage(provider, settings.apiKey, image);
+      setResult(tasks);
+      setResultOpen(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '提取失败,请重试');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.title}>任务载入</Text>
-        <Text style={styles.subtitle}>拍一张照片,自动变成当天计划</Text>
+        <View style={styles.headerText}>
+          <Text style={styles.title}>任务载入</Text>
+          <Text style={styles.subtitle}>拍一张照片,自动变成当天计划</Text>
+        </View>
+        <Pressable style={styles.gearButton} onPress={() => setSettingsOpen(true)} hitSlop={8}>
+          <Text style={styles.gearText}>⚙️</Text>
+        </Pressable>
       </View>
 
       {image ? (
@@ -59,7 +95,9 @@ export function TaskImportScreen() {
         <Pressable style={styles.dropZone} onPress={pickFromLibrary}>
           <Text style={styles.dropIcon}>🖼️</Text>
           <Text style={styles.dropTitle}>选择图片或拍照</Text>
-          <Text style={styles.dropDesc}>课程表、通知截图、手写日程……{'\n'}AI 帮你提取成一条条任务</Text>
+          <Text style={styles.dropDesc}>
+            课程表、通知截图、手写日程……{'\n'}AI 帮你提取成一条条任务
+          </Text>
         </Pressable>
       )}
 
@@ -72,15 +110,25 @@ export function TaskImportScreen() {
         </Pressable>
       </View>
 
-      {/* 提取按钮:AI 提取层(下一 commit)接入后激活 */}
       <Pressable
-        style={[styles.button, styles.primaryButton, !image && styles.buttonDisabled]}
-        disabled={!image}
+        style={[styles.button, styles.primaryButton, (!image || extracting) && styles.buttonDisabled]}
+        disabled={!image || extracting}
+        onPress={runExtraction}
       >
-        <Text style={styles.primaryText}>✨ AI 提取任务</Text>
+        {extracting ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+            <Text style={styles.primaryText}>识别中…</Text>
+          </View>
+        ) : (
+          <Text style={styles.primaryText}>✨ AI 提取任务</Text>
+        )}
       </Pressable>
-      {!image && <Text style={styles.hint}>选好图片后即可开始提取(功能接入中)</Text>}
+      {!image && <Text style={styles.hint}>选好图片后点「AI 提取任务」开始识别</Text>}
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <ResultModal visible={resultOpen} tasks={result} onClose={() => setResultOpen(false)} />
+      <AiSettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </View>
   );
 }
@@ -92,6 +140,11 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerText: {
+    flex: 1,
     gap: 4,
   },
   title: {
@@ -102,6 +155,17 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     color: '#6B7280',
+  },
+  gearButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gearText: {
+    fontSize: 18,
   },
   dropZone: {
     flex: 1,
@@ -166,6 +230,11 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.4,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   primaryText: {
     fontSize: 15,
