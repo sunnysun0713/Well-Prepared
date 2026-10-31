@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import type { Task } from '@/data/tasks';
 import { CategoryPicker } from './CategoryPicker';
+import { TimeRangeModal } from './TimeRangeModal';
 import { useTasks } from '@/data/tasks-context';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
 
@@ -46,6 +47,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const [customMinutes, setCustomMinutes] = useState('');
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
 
   // 打开弹窗时重置为任务当前值(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
@@ -60,6 +62,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       setCustomMinutes('');
       setError('');
       setConfirmDelete(false);
+      setTimeOpen(false);
     }
   }
 
@@ -124,27 +127,14 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
               maxLength={50}
             />
 
-            {/* 第 2 行:时间 */}
+            {/* 第 2 行:时间(点击打开起止时间滚轮) */}
             <Text style={styles.label}>时间</Text>
-            <View style={styles.timeRow}>
-              <TextInput
-                value={startTime}
-                onChangeText={setStartTime}
-                style={styles.timeInput}
-                placeholder="07:30"
-                placeholderTextColor="#9CA3AF"
-                maxLength={5}
-              />
-              <Text style={styles.timeDash}>至</Text>
-              <TextInput
-                value={endTime}
-                onChangeText={setEndTime}
-                style={styles.timeInput}
-                placeholder="08:00"
-                placeholderTextColor="#9CA3AF"
-                maxLength={5}
-              />
-            </View>
+            <Pressable style={styles.timeButton} onPress={() => setTimeOpen(true)}>
+              <Text style={styles.timeButtonText}>
+                {startTime} ~ {endTime}
+              </Text>
+              <Text style={styles.timeButtonHint}>点击设置</Text>
+            </Pressable>
 
             {/* 第 3 行:备注 */}
             <Text style={styles.label}>备注</Text>
@@ -252,6 +242,19 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
           </Pressable>
         </Pressable>
       </KeyboardAvoidingView>
+
+      <TimeRangeModal
+        visible={timeOpen}
+        subtitle={title}
+        initialStart={startTime}
+        initialEnd={endTime}
+        onCancel={() => setTimeOpen(false)}
+        onConfirm={(start, end) => {
+          setStartTime(start);
+          setEndTime(end);
+          setTimeOpen(false);
+        }}
+      />
     </Modal>
   );
 }
@@ -293,25 +296,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1F2937',
   },
-  timeRow: {
+  timeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  timeInput: {
-    flex: 1,
+    justifyContent: 'space-between',
     height: 36,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    fontSize: 14,
-    color: '#1F2937',
-    textAlign: 'center',
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
   },
-  timeDash: {
-    fontSize: 13,
-    color: '#6B7280',
+  timeButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4F46E5',
+    fontVariant: ['tabular-nums'],
+  },
+  timeButtonHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
   },
   chipGrid: {
     flexDirection: 'row',

@@ -84,6 +84,7 @@ export function TimeRangeModal({
             </View>
             <View style={styles.wheelsRow}>
               <WheelPicker
+                key={`${visible}-start-hour`}
                 options={HOURS}
                 value={startHour}
                 onChange={setStartHour}
@@ -93,6 +94,7 @@ export function TimeRangeModal({
               />
               <Text style={styles.colon}>:</Text>
               <WheelPicker
+                key={`${visible}-start-minute`}
                 options={MINUTES}
                 value={startMinute}
                 onChange={setStartMinute}
@@ -112,6 +114,7 @@ export function TimeRangeModal({
             </View>
             <View style={styles.wheelsRow}>
               <WheelPicker
+                key={`${visible}-end-hour`}
                 options={HOURS}
                 value={endHour}
                 onChange={setEndHour}
@@ -121,6 +124,7 @@ export function TimeRangeModal({
               />
               <Text style={styles.colon}>:</Text>
               <WheelPicker
+                key={`${visible}-end-minute`}
                 options={MINUTES}
                 value={endMinute}
                 onChange={setEndMinute}
