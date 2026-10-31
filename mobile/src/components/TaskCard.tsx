@@ -9,10 +9,12 @@ interface Props {
   task: Task;
   /** 时间已过,整卡弱化显示 */
   past: boolean;
+  /** 提供时在卡片上显示删除按钮(日历模块使用) */
+  onRequestDelete?: () => void;
 }
 
 /** 任务卡片:起止时间 + 标题/备注 + 提醒标记 + 完成状态 + 设置入口 */
-export function TaskCard({ task, past }: Props) {
+export function TaskCard({ task, past, onRequestDelete }: Props) {
   const { updateTask } = useTasks();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const category = getCategory(task.categoryId);
@@ -38,6 +40,11 @@ export function TaskCard({ task, past }: Props) {
       <Pressable onPress={() => setSettingsOpen(true)} hitSlop={8}>
         <Text style={styles.gear}>⚙️</Text>
       </Pressable>
+      {onRequestDelete ? (
+        <Pressable onPress={onRequestDelete} hitSlop={8}>
+          <Text style={styles.trash}>🗑️</Text>
+        </Pressable>
+      ) : null}
 
       <TaskSettingsModal
         visible={settingsOpen}
@@ -109,5 +116,8 @@ const styles = StyleSheet.create({
   gear: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  trash: {
+    fontSize: 15,
   },
 });

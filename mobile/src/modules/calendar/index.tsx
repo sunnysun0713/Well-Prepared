@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AddTaskModal } from '@/components/AddTaskModal';
 import { useTasks } from '@/data/tasks-context';
 import { DayTasksPanel } from './day-tasks-panel';
 import { MonthGrid } from './month-grid';
@@ -24,6 +25,7 @@ export function CalendarScreen() {
   // 进入模块时默认选中今天,直接展示当天任务
   const [selected, setSelected] = useState<Date | null>(() => new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const { getTasks } = useTasks();
 
   // 当前视图月份中有任务的日号,用于网格圆点标记
@@ -81,8 +83,15 @@ export function CalendarScreen() {
   const todayMonthIndex = today.getMonth();
   const todayDayIndex = today.getDate() - 1;
 
+  /** 右下角添加:未选中日期时默认今天 */
+  const openAdd = () => {
+    if (!selected) setSelected(new Date());
+    setAddOpen(true);
+  };
+
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <View style={styles.root}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <Text style={styles.today}>
         今天是 {today.getFullYear()}年{today.getMonth() + 1}月{today.getDate()}日
         {'  '}星期{WEEKDAYS[today.getDay()]}
@@ -135,18 +144,54 @@ export function CalendarScreen() {
         }}
         onCancel={() => setPickerOpen(false)}
       />
-    </ScrollView>
+      </ScrollView>
+
+      <Pressable style={styles.fab} onPress={openAdd} hitSlop={8}>
+        <Text style={styles.fabText}>+</Text>
+      </Pressable>
+
+      <AddTaskModal
+        visible={addOpen}
+        date={selected ?? today}
+        onClose={() => setAddOpen(false)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   scroll: {
     flex: 1,
   },
   container: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 96,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  fabText: {
+    fontSize: 30,
+    lineHeight: 34,
+    color: '#FFFFFF',
+    fontWeight: '400',
   },
   today: {
     fontSize: 18,

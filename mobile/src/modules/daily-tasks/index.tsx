@@ -9,8 +9,8 @@ import {
   View,
 } from 'react-native';
 import { useTasks } from '@/data/tasks-context';
+import { AddTaskModal } from '@/components/AddTaskModal';
 import { TaskCard } from '@/components/TaskCard';
-import { AddTaskModal } from './add-task-modal';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];

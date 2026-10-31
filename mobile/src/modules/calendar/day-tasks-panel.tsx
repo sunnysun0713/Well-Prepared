@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useTasks } from '@/data/tasks-context';
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { TaskCard } from '@/components/TaskCard';
+import type { Task } from '@/data/tasks';
+import { useTasks } from '@/data/tasks-context';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -10,7 +13,8 @@ interface Props {
 
 /** 选中日期下方的「当日代办事项」面板:展示每日任务模块中该日期的任务 */
 export function DayTasksPanel({ date }: Props) {
-  const { getTasks } = useTasks();
+  const { getTasks, deleteTask } = useTasks();
+  const [pendingDelete, setPendingDelete] = useState<Task | null>(null);
   const tasks = getTasks(date);
 
   const now = new Date();
@@ -28,7 +32,7 @@ export function DayTasksPanel({ date }: Props) {
       {tasks.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyTitle}>当天暂无代办事项</Text>
-          <Text style={styles.emptyHint}>可在「每日任务」模块中添加任务</Text>
+          <Text style={styles.emptyHint}>点右下角 + 添加任务</Text>
         </View>
       ) : (
         <View style={styles.list}>
@@ -37,10 +41,28 @@ export function DayTasksPanel({ date }: Props) {
               key={t.id}
               task={t}
               past={isToday && t.endTime !== '' && t.endTime < nowHM}
+              onRequestDelete={() => setPendingDelete(t)}
             />
           ))}
         </View>
       )}
+
+      <ConfirmModal
+        visible={pendingDelete !== null}
+        title="删除任务"
+        message={
+          pendingDelete
+            ? `确定删除「${pendingDelete.title}」？此操作不可恢复`
+            : ''
+        }
+        confirmText="删除"
+        danger
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) deleteTask(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+      />
     </View>
   );
 }
