@@ -127,16 +127,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
               maxLength={50}
             />
 
-            {/* 第 2 行:时间(点击打开起止时间滚轮) */}
-            <Text style={styles.label}>时间</Text>
-            <Pressable style={styles.timeButton} onPress={() => setTimeOpen(true)}>
-              <Text style={styles.timeButtonText}>
-                {startTime} ~ {endTime}
-              </Text>
-              <Text style={styles.timeButtonHint}>点击设置</Text>
-            </Pressable>
-
-            {/* 第 3 行:备注 */}
+            {/* 第 2 行:备注 */}
             <Text style={styles.label}>备注</Text>
             <TextInput
               value={note}
@@ -146,6 +137,15 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
               placeholderTextColor="#9CA3AF"
               maxLength={100}
             />
+
+            {/* 第 3 行:时间(点击打开起止时间滚轮) */}
+            <Text style={styles.label}>时间</Text>
+            <Pressable style={styles.timeButton} onPress={() => setTimeOpen(true)}>
+              <Text style={styles.timeButtonText}>
+                {startTime} ~ {endTime}
+              </Text>
+              <Text style={styles.timeButtonHint}>点击设置</Text>
+            </Pressable>
 
             {/* 第 4 行:分类标签(含自定义) */}
             <Text style={styles.label}>分类</Text>

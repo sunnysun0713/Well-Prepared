@@ -31,6 +31,7 @@ type Action =
   | { type: 'ADD_TASK'; dateKey: string; task: Task }
   | { type: 'UPDATE_TASK'; id: string; patch: Partial<Omit<Task, 'id'>> }
   | { type: 'DELETE_TASK'; id: string }
+  | { type: 'CLEAR_CATEGORY'; categoryId: string }
   | { type: 'MERGE_REMOTE'; records: CloudTaskRecord[] };
 
 function reducer(state: TasksState, action: Action): TasksState {
@@ -52,6 +53,19 @@ function reducer(state: TasksState, action: Action): TasksState {
         Object.entries(state)
           .map(([key, tasks]) => [key, tasks.filter((t) => t.id !== action.id)] as const)
           .filter(([, tasks]) => tasks.length > 0),
+      );
+    case 'CLEAR_CATEGORY':
+      // 删除分类时,把使用该分类的任务改为无标签
+      return Object.fromEntries(
+        Object.entries(state).map(([key, tasks]) => [
+          key,
+          tasks.map((t) => {
+            if (t.categoryId !== action.categoryId) return t;
+            const next = { ...t };
+            delete next.categoryId;
+            return next;
+          }),
+        ]),
       );
     case 'MERGE_REMOTE': {
       // 云端记录覆盖本地同 remoteId/localId 的版本;软删除记录同时删除本地任务
@@ -97,6 +111,8 @@ interface TasksContextValue {
   syncNow: () => Promise<number>;
   /** 把没有云端 id 的本地任务上传,返回上传条数 */
   uploadLocalTasks: () => Promise<number>;
+  /** 删除分类时清除任务上的该分类标记 */
+  clearCategory: (categoryId: string) => void;
 }
 
 const TasksContext = createContext<TasksContextValue | null>(null);
@@ -246,6 +262,24 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     return count;
   }, [state, user]);
 
+  /** 删除分类:清除任务上的标记,并同步云端 */
+  const clearCategory = useCallback(
+    (categoryId: string) => {
+      dispatch({ type: 'CLEAR_CATEGORY', categoryId });
+      if (!user) return;
+      for (const tasks of Object.values(state)) {
+        for (const task of tasks) {
+          if (task.categoryId === categoryId && task.remoteId) {
+            void updateCloudTask(task.remoteId, { categoryId: undefined }).catch(() => {
+              // 云端更新失败时下次同步会覆盖
+            });
+          }
+        }
+      }
+    },
+    [state, user],
+  );
+
   // 登录后自动拉取云端任务;等本地存档读取完成,避免合并结果被覆盖
   useEffect(() => {
     if (!user || !hydrated) return;
@@ -255,8 +289,16 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, [user, hydrated, syncNow]);
 
   const value = useMemo(
-    () => ({ getTasks, addTask, updateTask, deleteTask, syncNow, uploadLocalTasks }),
-    [getTasks, addTask, updateTask, deleteTask, syncNow, uploadLocalTasks],
+    () => ({
+      getTasks,
+      addTask,
+      updateTask,
+      deleteTask,
+      syncNow,
+      uploadLocalTasks,
+      clearCategory,
+    }),
+    [getTasks, addTask, updateTask, deleteTask, syncNow, uploadLocalTasks, clearCategory],
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
