@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useTasks } from '@/data/tasks-context';
 import { useAccount } from './account-context';
+import { FriendsPanel } from './friends-panel';
 
 const ACCENT = '#4F46E5';
 
@@ -362,6 +363,8 @@ export function AccountModal({ visible, onClose }: Props) {
                       <Text style={styles.confirmText}>保存资料</Text>
                     )}
                   </Pressable>
+
+                  <FriendsPanel />
                 </ScrollView>
 
                 <View style={styles.footerRow}>

@@ -10,7 +10,7 @@ import { MODULES, getModule } from '@/modules/registry';
 /** 主界面:顶部模块选择栏 + 当前激活模块的内容区 */
 export default function HomeScreen() {
   const router = useRouter();
-  const { user } = useAccount();
+  const { user, pendingCount } = useAccount();
   const [activeId, setActiveId] = useState(MODULES[0]?.id ?? '');
   const [accountOpen, setAccountOpen] = useState(false);
   const active = getModule(activeId) ?? MODULES[0];
@@ -25,6 +25,7 @@ export default function HomeScreen() {
         onManage={() => router.push('/module-manager')}
         onAccount={() => setAccountOpen(true)}
         accountText={accountText}
+        accountBadge={pendingCount > 0}
       />
       {ActiveComponent ? <ActiveComponent /> : null}
       <AccountModal visible={accountOpen} onClose={() => setAccountOpen(false)} />

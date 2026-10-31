@@ -23,7 +23,9 @@ import {
   saveCloudConfig,
   type CloudConfig,
 } from '@/cloud/config';
+import { fetchIncomingFriendRequests } from '@/cloud/friends';
 import { ensureLeanCloud } from '@/cloud/leancloud';
+import { fetchIncomingTaskRequests } from '@/cloud/requests';
 
 interface AccountContextValue {
   config: CloudConfig;
@@ -31,6 +33,9 @@ interface AccountContextValue {
   /** 本地配置读取完成(避免首屏误显示配置表单) */
   configLoaded: boolean;
   user: AccountProfile | null;
+  /** 待处理的好友申请 + 任务请求数量 */
+  pendingCount: number;
+  refreshPending: () => Promise<void>;
   saveConfig: (config: CloudConfig) => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string, nickname: string) => Promise<void>;
@@ -46,6 +51,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<CloudConfig>(EMPTY_CLOUD_CONFIG);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [user, setUser] = useState<AccountProfile | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
 
   // 启动时读取云配置并恢复登录态(SDK 会把会话存进 storage 适配器)
   useEffect(() => {
@@ -106,7 +112,47 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await logoutApi();
     setUser(null);
+    setPendingCount(0);
   }, []);
+
+  /** 刷新待处理请求数量(好友申请 + 任务请求) */
+  const refreshPending = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [friendRequests, taskRequests] = await Promise.all([
+        fetchIncomingFriendRequests(),
+        fetchIncomingTaskRequests(),
+      ]);
+      setPendingCount(friendRequests.length + taskRequests.length);
+    } catch {
+      // 网络异常时保留上次数量
+    }
+  }, [user]);
+
+  // 登录后轮询待处理请求,用于账户按钮角标(setState 在 await 之后,避免同步更新)
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const [friendRequests, taskRequests] = await Promise.all([
+          fetchIncomingFriendRequests(),
+          fetchIncomingTaskRequests(),
+        ]);
+        if (!cancelled) setPendingCount(friendRequests.length + taskRequests.length);
+      } catch {
+        // 网络异常时保留上次数量
+      }
+    };
+    void tick();
+    const timer = setInterval(() => {
+      void tick();
+    }, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [user]);
 
   const updateProfile = useCallback(async (patch: { nickname?: string; qq?: string }) => {
     const profile = await updateProfileApi(patch);
@@ -123,6 +169,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       configReady: isCloudConfigReady(config),
       configLoaded,
       user,
+      pendingCount,
+      refreshPending,
       saveConfig,
       login,
       register,
@@ -130,7 +178,19 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       updateProfile,
       refreshUser,
     }),
-    [config, configLoaded, user, saveConfig, login, register, logout, updateProfile, refreshUser],
+    [
+      config,
+      configLoaded,
+      user,
+      pendingCount,
+      refreshPending,
+      saveConfig,
+      login,
+      register,
+      logout,
+      updateProfile,
+      refreshUser,
+    ],
   );
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
