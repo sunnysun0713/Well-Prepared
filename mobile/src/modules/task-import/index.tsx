@@ -6,7 +6,7 @@ import { getProvider } from '@/ai/providers';
 import { useAiSettings } from '@/ai/settings';
 import type { ExtractedTask } from '@/ai/types';
 import { AiSettingsModal } from './ai-settings-modal';
-import { ResultModal } from './result-modal';
+import { ImportConfirmModal } from './import-confirm-modal';
 
 const ACCENT = '#4F46E5';
 
@@ -22,6 +22,7 @@ export function TaskImportScreen() {
   const { settings } = useAiSettings();
   const [image, setImage] = useState<PickedImage | null>(null);
   const [error, setError] = useState('');
+  const [importNote, setImportNote] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [result, setResult] = useState<ExtractedTask[]>([]);
   const [resultOpen, setResultOpen] = useState(false);
@@ -30,6 +31,7 @@ export function TaskImportScreen() {
   /** 从相册选图:图库在安卓/Web 无需权限,iOS 由系统弹窗处理 */
   const pickFromLibrary = async () => {
     setError('');
+    setImportNote('');
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.7,
@@ -43,6 +45,7 @@ export function TaskImportScreen() {
   /** 拍照:相机必须用户授权,拒绝时提示且不覆盖已选图片 */
   const takePhoto = async () => {
     setError('');
+    setImportNote('');
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       setError('相机权限被拒绝,无法拍照;可以改用「从相册选择」');
@@ -59,6 +62,7 @@ export function TaskImportScreen() {
   const runExtraction = async () => {
     if (!image || extracting) return;
     setError('');
+    setImportNote('');
     setExtracting(true);
     try {
       const provider = getProvider(settings.providerId);
@@ -125,9 +129,15 @@ export function TaskImportScreen() {
         )}
       </Pressable>
       {!image && <Text style={styles.hint}>选好图片后点「AI 提取任务」开始识别</Text>}
+      {importNote ? <Text style={styles.importNote}>{importNote}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <ResultModal visible={resultOpen} tasks={result} onClose={() => setResultOpen(false)} />
+      <ImportConfirmModal
+        visible={resultOpen}
+        tasks={result}
+        onClose={() => setResultOpen(false)}
+        onImport={(count) => setImportNote(`已导入 ${count} 条任务,到「每日任务」查看`)}
+      />
       <AiSettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </View>
   );
@@ -250,6 +260,12 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 12,
     color: '#DC2626',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  importNote: {
+    fontSize: 12,
+    color: '#059669',
     textAlign: 'center',
     marginTop: 8,
   },

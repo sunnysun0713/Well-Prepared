@@ -111,7 +111,11 @@ export function DailyTasksScreen() {
           <Text style={styles.sectionLabel}>当日任务({tasks.length})</Text>
           <View style={styles.list}>
             {tasks.map((t) => (
-              <TaskCard key={t.id} task={t} past={isTodaySelected && t.endTime < nowHM} />
+              <TaskCard
+                key={t.id}
+                task={t}
+                past={isTodaySelected && t.endTime !== '' && t.endTime < nowHM}
+              />
             ))}
             {tasks.length === 0 && (
               <View style={styles.empty}>

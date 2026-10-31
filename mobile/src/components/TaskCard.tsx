@@ -17,9 +17,11 @@ export function TaskCard({ task, past }: Props) {
 
   return (
     <View style={[styles.card, past && styles.past]}>
-      <Text style={styles.time}>
-        {task.startTime}–{task.endTime}
-      </Text>
+      {task.startTime || task.endTime ? (
+        <Text style={styles.time}>
+          {task.startTime}–{task.endTime}
+        </Text>
+      ) : null}
       <View style={styles.body}>
         <Text style={[styles.title, task.done && styles.titleDone]}>{task.title}</Text>
         {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
