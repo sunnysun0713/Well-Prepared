@@ -76,6 +76,12 @@ export function DailyTasksScreen() {
   const dateKey = selectedDate.toDateString();
   const tasks = useMemo(() => getTasks(new Date(dateKey)), [dateKey, getTasks]);
 
+  // 今天收藏(紧急)任务数:始终按真实今天统计,与当前浏览日期无关
+  const todayFavoriteCount = useMemo(
+    () => getTasks(new Date()).filter((t) => t.favorite).length,
+    [getTasks],
+  );
+
   const isTodaySelected = relativeLabel(selectedDate, now) === '今天';
   const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const label = relativeLabel(selectedDate, now);
@@ -105,6 +111,12 @@ export function DailyTasksScreen() {
         </Pressable>
       </View>
       <Text style={styles.hint}>左右滑动切换日期</Text>
+
+      {todayFavoriteCount > 0 && (
+        <View style={styles.urgentBar}>
+          <Text style={styles.urgentText}>⭐ 今日紧急任务 {todayFavoriteCount} 项</Text>
+        </View>
+      )}
 
       <Animated.View style={[styles.body, { transform: [{ translateX: slide }] }]}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
@@ -181,6 +193,22 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 6,
+  },
+  urgentBar: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  urgentText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B45309',
   },
   body: {
     flex: 1,

@@ -30,15 +30,18 @@ export function CalendarScreen() {
   const { getTasks } = useTasks();
   const { starsFor } = useBusyness();
 
-  // 当前视图月份每日任务数对应的星级,用于网格星星标记
-  const starsByDay = useMemo(() => {
+  // 当前视图月份:每日任务数对应的星级 + 每日收藏(紧急)任务数,用于网格星星标记
+  const { starsByDay, favoritesByDay } = useMemo(() => {
     const stars: Record<number, number> = {};
+    const favorites: Record<number, number> = {};
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
     for (let day = 1; day <= daysInMonth; day += 1) {
-      const count = getTasks(new Date(viewYear, viewMonth, day)).length;
-      if (count > 0) stars[day] = starsFor(count);
+      const dayTasks = getTasks(new Date(viewYear, viewMonth, day));
+      if (dayTasks.length > 0) stars[day] = starsFor(dayTasks.length);
+      const favoriteCount = dayTasks.filter((t) => t.favorite).length;
+      if (favoriteCount > 0) favorites[day] = favoriteCount;
     }
-    return stars;
+    return { starsByDay: stars, favoritesByDay: favorites };
   }, [getTasks, viewYear, viewMonth, starsFor]);
 
   const goPrevMonth = () => {
@@ -126,6 +129,7 @@ export function CalendarScreen() {
         today={today}
         selected={selected}
         starsByDay={starsByDay}
+        favoritesByDay={favoritesByDay}
         onSelectDay={handleSelectDay}
       />
 

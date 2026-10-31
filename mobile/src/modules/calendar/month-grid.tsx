@@ -14,12 +14,22 @@ interface Props {
   selected: Date | null;
   /** 每日任务数对应的星级(0-5),格内显示星星 */
   starsByDay: Record<number, number>;
+  /** 每日收藏(紧急)任务数,对应数量的星星加深色边框 */
+  favoritesByDay: Record<number, number>;
   /** 点击某一天(传当月日号) */
   onSelectDay: (day: number) => void;
 }
 
 /** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,任务繁忙度用星星表示 */
-export function MonthGrid({ year, month, today, selected, starsByDay, onSelectDay }: Props) {
+export function MonthGrid({
+  year,
+  month,
+  today,
+  selected,
+  starsByDay,
+  favoritesByDay,
+  onSelectDay,
+}: Props) {
   // 周一起始:计算当月 1 日前需要补的空格数
   const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -59,6 +69,10 @@ export function MonthGrid({ year, month, today, selected, starsByDay, onSelectDa
         const selectedCell = day !== null && isSelected(day);
         const stars =
           day !== null ? Math.min(starsByDay[day] ?? 0, MAX_BUSYNESS_STARS) : 0;
+        // 收藏数最多 5,不超过星星行长度;收藏多于星级时补足星星数量
+        const favorites =
+          day !== null ? Math.min(favoritesByDay[day] ?? 0, MAX_BUSYNESS_STARS) : 0;
+        const starCount = Math.max(stars, favorites);
         return (
           <View key={`d-${i}`} style={styles.cell}>
             {day !== null && (
@@ -82,8 +96,15 @@ export function MonthGrid({ year, month, today, selected, starsByDay, onSelectDa
                     >
                       {day}
                     </Text>
-                    {stars > 0 && (
-                      <Text style={styles.stars}>{'★'.repeat(stars)}</Text>
+                    {starCount > 0 && (
+                      <View style={styles.starRow}>
+                        <Text style={styles.stars}>{'★'.repeat(starCount)}</Text>
+                        {favorites > 0 && (
+                          <Text style={[styles.stars, styles.favoriteStars]}>
+                            {'☆'.repeat(favorites)}
+                          </Text>
+                        )}
+                      </View>
                     )}
                   </View>
                 )}
@@ -138,11 +159,20 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1F2937',
   },
+  starRow: {
+    position: 'relative',
+  },
   stars: {
     fontSize: 10,
     lineHeight: 12,
     letterSpacing: -0.5,
     color: BUSYNESS_STAR_COLOR,
+  },
+  favoriteStars: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    color: '#92400E',
   },
   selectedText: {
     color: ACCENT,

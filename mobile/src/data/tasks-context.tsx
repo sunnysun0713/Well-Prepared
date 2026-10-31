@@ -72,7 +72,13 @@ function reducer(state: TasksState, action: Action): TasksState {
       const next: TasksState = {};
       for (const [key, tasks] of Object.entries(state)) next[key] = tasks.slice();
       for (const record of action.records) {
+        // 收藏标记暂不同步到云端,合并时保留本地已收藏状态
+        let favorite: boolean | undefined;
         for (const key of Object.keys(next)) {
+          const matched = next[key].find(
+            (t) => t.remoteId === record.remoteId || t.id === record.localId,
+          );
+          if (matched?.favorite) favorite = true;
           const filtered = next[key].filter(
             (t) => t.remoteId !== record.remoteId && t.id !== record.localId,
           );
@@ -90,6 +96,7 @@ function reducer(state: TasksState, action: Action): TasksState {
           done: record.done,
           remindAdvanceMinutes: record.remindAdvanceMinutes,
           categoryId: record.categoryId,
+          favorite,
         };
         next[record.dateKey] = [...(next[record.dateKey] ?? []), task];
       }

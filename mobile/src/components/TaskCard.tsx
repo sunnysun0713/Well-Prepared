@@ -78,6 +78,15 @@ export function TaskCard({ task, past }: Props) {
       <Pressable onPress={() => setSettingsOpen(true)} hitSlop={8}>
         <Text style={styles.gear}>⚙️</Text>
       </Pressable>
+      <Pressable
+        onPress={() => updateTask(task.id, { favorite: !task.favorite })}
+        hitSlop={8}
+        accessibilityLabel={task.favorite ? '取消收藏' : '收藏为紧急任务'}
+      >
+        <Text style={[styles.favorite, task.favorite && styles.favoriteOn]}>
+          {task.favorite ? '★' : '☆'}
+        </Text>
+      </Pressable>
 
       <TimeRangeModal
         visible={timeOpen}
@@ -190,5 +199,12 @@ const styles = StyleSheet.create({
   gear: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  favorite: {
+    fontSize: 18,
+    color: '#D1D5DB',
+  },
+  favoriteOn: {
+    color: '#F59E0B',
   },
 });

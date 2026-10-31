@@ -15,6 +15,8 @@ export interface Task {
   remoteId?: string;
   /** 分类标签 id(见 categories.ts);未设置表示无标签 */
   categoryId?: string;
+  /** 是否收藏(紧急任务);收藏后日历星星加深色边框、每日任务顶部显示数量 */
+  favorite?: boolean;
 }
 
 /** 日期键 'YYYY-MM-DD' */
