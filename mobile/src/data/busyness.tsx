@@ -15,6 +15,9 @@ export const DEFAULT_BUSYNESS_THRESHOLDS = [1, 2, 3, 4, 5];
 /** 星级上限 */
 export const MAX_BUSYNESS_STARS = 5;
 
+/** 星星颜色(黄色) */
+export const BUSYNESS_STAR_COLOR = '#FACC15';
+
 const STORAGE_KEY = 'busyness-thresholds-v1';
 
 /** 校验阈值:5 个正整数且严格递增 */

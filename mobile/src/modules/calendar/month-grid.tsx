@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { BUSYNESS_STAR_COLOR, MAX_BUSYNESS_STARS } from '@/data/busyness';
 
 const WEEK_HEADERS = ['一', '二', '三', '四', '五', '六', '日'];
 const WEEKEND_COLOR = '#DC2626';
@@ -56,7 +57,8 @@ export function MonthGrid({ year, month, today, selected, starsByDay, onSelectDa
         const weekend = i % 7 >= 5;
         const todayCell = day !== null && isToday(day);
         const selectedCell = day !== null && isSelected(day);
-        const stars = day !== null ? (starsByDay[day] ?? 0) : 0;
+        const stars =
+          day !== null ? Math.min(starsByDay[day] ?? 0, MAX_BUSYNESS_STARS) : 0;
         return (
           <View key={`d-${i}`} style={styles.cell}>
             {day !== null && (
@@ -81,9 +83,7 @@ export function MonthGrid({ year, month, today, selected, starsByDay, onSelectDa
                       {day}
                     </Text>
                     {stars > 0 && (
-                      <Text style={[styles.stars, todayCell && styles.starsOnToday]}>
-                        {'★'.repeat(stars)}
-                      </Text>
+                      <Text style={styles.stars}>{'★'.repeat(stars)}</Text>
                     )}
                   </View>
                 )}
@@ -142,10 +142,7 @@ const styles = StyleSheet.create({
     fontSize: 6,
     lineHeight: 7,
     letterSpacing: 0.5,
-    color: '#F59E0B',
-  },
-  starsOnToday: {
-    color: '#FFFFFF',
+    color: BUSYNESS_STAR_COLOR,
   },
   selectedText: {
     color: ACCENT,

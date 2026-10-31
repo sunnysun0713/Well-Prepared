@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
+  BUSYNESS_STAR_COLOR,
   DEFAULT_BUSYNESS_THRESHOLDS,
   isValidThresholds,
   MAX_BUSYNESS_STARS,
@@ -8,7 +9,6 @@ import {
 } from '@/data/busyness';
 
 const ACCENT = '#4F46E5';
-const GOLD = '#F59E0B';
 
 interface Props {
   visible: boolean;
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   stars: {
     width: 62,
     fontSize: 12,
-    color: GOLD,
+    color: BUSYNESS_STAR_COLOR,
     letterSpacing: 1,
   },
   rowLabel: {
