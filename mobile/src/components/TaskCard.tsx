@@ -39,7 +39,14 @@ export function TaskCard({ task, past, onRequestDelete }: Props) {
           ]}
         >
           {expanded && (
-            <Text style={styles.categoryLabel}>{category.name.split('').join('\n')}</Text>
+            <Text style={styles.categoryLabel}>
+              {(category.name.length > 4
+                ? `${category.name.slice(0, 3)}…`
+                : category.name
+              )
+                .split('')
+                .join('\n')}
+            </Text>
           )}
         </View>
       )}

@@ -8,11 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  CATEGORY_NAME_MAX_LENGTH,
-  TASK_CATEGORIES,
-  type TaskCategory,
-} from './categories';
+import { TASK_CATEGORIES, type TaskCategory } from './categories';
 
 /** 分类存档:v2 同时保存自定义分类与全部标签顺序 */
 const STORAGE_KEY = 'task-categories-v2';
@@ -126,7 +122,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
   const addCategory = useCallback((name: string, color: string): TaskCategory => {
     const category: TaskCategory = {
       id: `custom-${Date.now()}`,
-      name: name.trim().slice(0, CATEGORY_NAME_MAX_LENGTH),
+      name: name.trim(),
       color,
       custom: true,
     };

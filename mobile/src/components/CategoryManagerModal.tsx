@@ -10,11 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {
-  CATEGORY_COLORS,
-  CATEGORY_NAME_MAX_LENGTH,
-  type TaskCategory,
-} from '@/data/categories';
+import { CATEGORY_COLORS, type TaskCategory } from '@/data/categories';
 import { useCategories } from '@/data/categories-context';
 import { useTasks } from '@/data/tasks-context';
 
@@ -62,6 +58,8 @@ function CategoryRow({
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > 3,
+        // 拒绝把拖动交给列表滚动,避免手势被抢走
+        onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
           setDragging(true);
           onDragStateChange(true);
@@ -187,9 +185,8 @@ export function CategoryManagerModal({ visible, onClose, onCategoryRemoved }: Pr
               value={name}
               onChangeText={setName}
               style={styles.input}
-              placeholder={`新标签名(最多 ${CATEGORY_NAME_MAX_LENGTH} 字)`}
+              placeholder="新标签名"
               placeholderTextColor="#9CA3AF"
-              maxLength={CATEGORY_NAME_MAX_LENGTH}
             />
             <View style={styles.colorRow}>
               {CATEGORY_COLORS.map((c) => {

@@ -28,9 +28,6 @@ export const CATEGORY_COLORS = [
   '#6B7280',
 ];
 
-/** 自定义分类名称最大长度(左侧标签竖排显示,过长会溢出) */
-export const CATEGORY_NAME_MAX_LENGTH = 4;
-
 /** 在分类列表中按 id 查找,未设置或未知 id 返回 undefined(无标签) */
 export function findCategory(
   categories: TaskCategory[],

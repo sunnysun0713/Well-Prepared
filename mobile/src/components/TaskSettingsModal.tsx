@@ -5,26 +5,20 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { reminderLabel } from '@/data/reminder-options';
 import type { Task } from '@/data/tasks';
-import { CategoryPicker } from './CategoryPicker';
-import { TimeRangeModal } from './TimeRangeModal';
 import { useTasks } from '@/data/tasks-context';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
+import { CategoryPicker } from './CategoryPicker';
+import { ReminderTimeModal } from './ReminderTimeModal';
+import { TimeRangeModal } from './TimeRangeModal';
 
 const ACCENT = '#4F46E5';
-
-/** 闹钟提醒固定档位 */
-const REMINDER_PRESETS = [
-  { label: '准时', minutes: 0 },
-  { label: '提前10分钟', minutes: 10 },
-  { label: '提前30分钟', minutes: 30 },
-  { label: '提前1小时', minutes: 60 },
-  { label: '提前1天', minutes: 1440 },
-];
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -34,7 +28,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** 任务设置弹窗,功能分行排列:任务名(改名)→ 时间 → 备注 → 闹钟提醒 */
+/** 任务设置弹窗,功能分行排列:任务名 → 备注 → 时间 → 分类 → 闹钟提醒 */
 export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const { updateTask, deleteTask } = useTasks();
   const [prevVisible, setPrevVisible] = useState(visible);
@@ -44,10 +38,10 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const [note, setNote] = useState(task.note ?? '');
   const [categoryId, setCategoryId] = useState<string | undefined>(task.categoryId);
   const [remind, setRemind] = useState<number | null>(task.remindAdvanceMinutes ?? null);
-  const [customMinutes, setCustomMinutes] = useState('');
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
 
   // 打开弹窗时重置为任务当前值(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
@@ -59,23 +53,12 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       setNote(task.note ?? '');
       setCategoryId(task.categoryId);
       setRemind(task.remindAdvanceMinutes ?? null);
-      setCustomMinutes('');
       setError('');
       setConfirmDelete(false);
       setTimeOpen(false);
+      setReminderOpen(false);
     }
   }
-
-  const isPreset = (m: number) => REMINDER_PRESETS.some((p) => p.minutes === m);
-  const customActive = remind !== null && !isPreset(remind);
-
-  /** 自定义分钟数生效 */
-  const applyCustom = () => {
-    const n = parseInt(customMinutes, 10);
-    if (!Number.isNaN(n) && n >= 0) {
-      setRemind(n);
-    }
-  };
 
   const confirm = async () => {
     const t = title.trim();
@@ -151,50 +134,24 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
             <Text style={styles.label}>分类</Text>
             <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
-            {/* 第 5 行:闹钟提醒(每行 3 个档位,固定排布不溢出) */}
+            {/* 第 5 行:闹钟提醒开关 + 提醒时间 */}
             <Text style={styles.label}>闹钟提醒</Text>
-            <View style={styles.chipGrid}>
-              {REMINDER_PRESETS.map((p) => {
-                const active = remind === p.minutes;
-                return (
-                  <Pressable
-                    key={p.minutes}
-                    onPress={() => setRemind(p.minutes)}
-                    style={[styles.chip, active && styles.chipActive]}
-                  >
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                      {p.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-              <Pressable
-                onPress={applyCustom}
-                style={[styles.chip, customActive && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, customActive && styles.chipTextActive]}>
-                  {customActive ? `自定义·${remind}分` : '自定义'}
-                </Text>
-              </Pressable>
-              {remind !== null && (
-                <Pressable onPress={() => setRemind(null)} style={styles.chip}>
-                  <Text style={styles.chipText}>关闭提醒</Text>
-                </Pressable>
-              )}
-            </View>
-            <View style={styles.customRow}>
-              <TextInput
-                value={customMinutes}
-                onChangeText={setCustomMinutes}
-                style={styles.customInput}
-                placeholder="自定义分钟数(如 45)"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="numeric"
-                maxLength={4}
-                onSubmitEditing={applyCustom}
+            <View style={styles.reminderRow}>
+              <Switch
+                value={remind != null}
+                onValueChange={(on) => setRemind(on ? (remind ?? 10) : null)}
+                trackColor={{ false: '#D1D5DB', true: '#C7D2FE' }}
+                thumbColor={remind != null ? ACCENT : '#F3F4F6'}
               />
-              <Pressable onPress={applyCustom} style={styles.applyButton}>
-                <Text style={styles.applyText}>应用</Text>
+              <Pressable
+                style={[styles.reminderButton, remind == null && styles.reminderButtonDisabled]}
+                disabled={remind == null}
+                onPress={() => setReminderOpen(true)}
+              >
+                <Text style={styles.reminderButtonText}>
+                  {remind != null ? reminderLabel(remind) : '未开启'}
+                </Text>
+                <Text style={styles.reminderButtonHint}>设置时间</Text>
               </Pressable>
             </View>
 
@@ -253,6 +210,16 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
           setStartTime(start);
           setEndTime(end);
           setTimeOpen(false);
+        }}
+      />
+
+      <ReminderTimeModal
+        visible={reminderOpen}
+        value={remind}
+        onClose={() => setReminderOpen(false)}
+        onSelect={setRemind}
+        onDeleted={(minutes) => {
+          if (remind === minutes) setRemind(10);
         }}
       />
     </Modal>
@@ -317,58 +284,34 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
   },
-  chipGrid: {
+  reminderRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 8,
-  },
-  chip: {
-    width: '31.5%',
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
   },
-  chipActive: {
-    backgroundColor: ACCENT,
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-  },
-  customRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  customInput: {
+  reminderButton: {
     flex: 1,
-    height: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 34,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    fontSize: 13,
-    color: '#1F2937',
-  },
-  applyButton: {
     paddingHorizontal: 12,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  applyText: {
+  reminderButtonDisabled: {
+    opacity: 0.5,
+  },
+  reminderButtonText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#374151',
+    fontWeight: '600',
+    color: ACCENT,
+  },
+  reminderButtonHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
   },
   reminderHint: {
     fontSize: 11,
