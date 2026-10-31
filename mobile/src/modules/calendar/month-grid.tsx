@@ -11,14 +11,14 @@ interface Props {
   today: Date;
   /** 选中的日期(可能在其他月份) */
   selected: Date | null;
-  /** 有任务的日号集合,格内显示小圆点 */
-  taskDays: Set<number>;
+  /** 每日任务数对应的星级(0-5),格内显示星星 */
+  starsByDay: Record<number, number>;
   /** 点击某一天(传当月日号) */
   onSelectDay: (day: number) => void;
 }
 
-/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,有任务显示圆点 */
-export function MonthGrid({ year, month, today, selected, taskDays, onSelectDay }: Props) {
+/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,任务繁忙度用星星表示 */
+export function MonthGrid({ year, month, today, selected, starsByDay, onSelectDay }: Props) {
   // 周一起始:计算当月 1 日前需要补的空格数
   const leadingBlanks = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -56,6 +56,7 @@ export function MonthGrid({ year, month, today, selected, taskDays, onSelectDay 
         const weekend = i % 7 >= 5;
         const todayCell = day !== null && isToday(day);
         const selectedCell = day !== null && isSelected(day);
+        const stars = day !== null ? (starsByDay[day] ?? 0) : 0;
         return (
           <View key={`d-${i}`} style={styles.cell}>
             {day !== null && (
@@ -79,8 +80,10 @@ export function MonthGrid({ year, month, today, selected, taskDays, onSelectDay 
                     >
                       {day}
                     </Text>
-                    {taskDays.has(day) && (
-                      <View style={[styles.taskDot, todayCell && styles.taskDotOnToday]} />
+                    {stars > 0 && (
+                      <Text style={[styles.stars, todayCell && styles.starsOnToday]}>
+                        {'★'.repeat(stars)}
+                      </Text>
                     )}
                   </View>
                 )}
@@ -135,16 +138,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1F2937',
   },
-  taskDot: {
-    position: 'absolute',
-    bottom: 4,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: ACCENT,
+  stars: {
+    fontSize: 6,
+    lineHeight: 7,
+    letterSpacing: 0.5,
+    color: '#F59E0B',
   },
-  taskDotOnToday: {
-    backgroundColor: '#FFFFFF',
+  starsOnToday: {
+    color: '#FFFFFF',
   },
   selectedText: {
     color: ACCENT,

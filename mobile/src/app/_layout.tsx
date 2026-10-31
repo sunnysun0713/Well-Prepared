@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AccountProvider } from '@/account/account-context';
 import { AiSettingsProvider } from '@/ai/settings';
+import { BusynessProvider } from '@/data/busyness';
 import { CategoriesProvider } from '@/data/categories-context';
 import { ReminderOptionsProvider } from '@/data/reminder-options';
 import { TasksProvider } from '@/data/tasks-context';
@@ -16,7 +17,8 @@ export default function RootLayout() {
 
   return (
     <CategoriesProvider>
-      <ReminderOptionsProvider>
+      <BusynessProvider>
+        <ReminderOptionsProvider>
         <AccountProvider>
           <TasksProvider>
             <AiSettingsProvider>
@@ -28,7 +30,8 @@ export default function RootLayout() {
             </AiSettingsProvider>
           </TasksProvider>
         </AccountProvider>
-      </ReminderOptionsProvider>
+        </ReminderOptionsProvider>
+      </BusynessProvider>
     </CategoriesProvider>
   );
 }
