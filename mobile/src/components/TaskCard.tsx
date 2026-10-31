@@ -4,6 +4,7 @@ import { findCategory } from '@/data/categories';
 import { useCategories } from '@/data/categories-context';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
+import { StartTimeModal } from './StartTimeModal';
 import { TaskSettingsModal } from './TaskSettingsModal';
 
 interface Props {
@@ -22,6 +23,7 @@ export function TaskCard({ task, past, onRequestDelete }: Props) {
   const { updateTask } = useTasks();
   const { categories } = useCategories();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [timeOpen, setTimeOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const category = findCategory(categories, task.categoryId);
   const hasTime = Boolean(task.startTime || task.endTime);
@@ -42,23 +44,25 @@ export function TaskCard({ task, past, onRequestDelete }: Props) {
         </View>
       )}
 
-      <Pressable
-        style={[styles.main, expanded && category && styles.mainExpanded]}
-        onPress={() => {
-          if (category) setExpanded((value) => !value);
-        }}
-      >
+      <View style={[styles.main, expanded && category && styles.mainExpanded]}>
         {hasTime && (
-          <View style={styles.timeCol}>
-            <Text style={styles.time}>{task.startTime || '—'}</Text>
-            <Text style={styles.timeEnd}>{task.endTime || '—'}</Text>
-          </View>
+          <Pressable onPress={() => setTimeOpen(true)} hitSlop={6}>
+            <View style={styles.timeCol}>
+              <Text style={styles.time}>{task.startTime || '—'}</Text>
+              <Text style={styles.timeEnd}>{task.endTime || '—'}</Text>
+            </View>
+          </Pressable>
         )}
-        <View style={styles.body}>
+        <Pressable
+          style={styles.body}
+          onPress={() => {
+            if (category) setExpanded((value) => !value);
+          }}
+        >
           <Text style={[styles.title, task.done && styles.titleDone]}>{task.title}</Text>
           {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
 
       {task.remindAdvanceMinutes != null && <Text style={styles.bell}>🔔</Text>}
       <Pressable onPress={() => updateTask(task.id, { done: !task.done })} hitSlop={8}>
@@ -75,6 +79,7 @@ export function TaskCard({ task, past, onRequestDelete }: Props) {
         </Pressable>
       ) : null}
 
+      <StartTimeModal visible={timeOpen} task={task} onClose={() => setTimeOpen(false)} />
       <TaskSettingsModal
         visible={settingsOpen}
         task={task}
