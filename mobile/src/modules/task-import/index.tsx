@@ -191,6 +191,24 @@ export function TaskImportScreen() {
         </View>
       </View>
 
+      {/* 提示信息:显示在中间区域上方,避免被底部按键/键盘遮挡 */}
+      {error || importNote ? (
+        <View style={styles.noticesTop}>
+          {importNote ? (
+            <View style={[styles.notice, styles.noticeSuccess]}>
+              <Ionicons name="checkmark-done-outline" size={15} color={colors.success} />
+              <Text style={[styles.noticeText, { color: colors.success }]}>{importNote}</Text>
+            </View>
+          ) : null}
+          {error ? (
+            <View style={[styles.notice, styles.noticeError]} accessibilityRole="alert">
+              <Ionicons name="alert-circle-outline" size={15} color={colors.danger} />
+              <Text style={[styles.noticeText, { color: colors.danger }]}>{error}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       {image ? (
         <View style={styles.previewWrap}>
           <Image source={{ uri: image.uri }} style={styles.preview} resizeMode="contain" />
@@ -259,18 +277,6 @@ export function TaskImportScreen() {
       <View style={styles.feedback}>
         {!image && !error && !importNote ? (
           <Text style={styles.hint}>选好图片后点「AI 提取任务」开始识别</Text>
-        ) : null}
-        {importNote ? (
-          <View style={[styles.notice, styles.noticeSuccess]}>
-            <Ionicons name="checkmark-done-outline" size={15} color={colors.success} />
-            <Text style={[styles.noticeText, { color: colors.success }]}>{importNote}</Text>
-          </View>
-        ) : null}
-        {error ? (
-          <View style={[styles.notice, styles.noticeError]} accessibilityRole="alert">
-            <Ionicons name="alert-circle-outline" size={15} color={colors.danger} />
-            <Text style={[styles.noticeText, { color: colors.danger }]}>{error}</Text>
-          </View>
         ) : null}
       </View>
 
@@ -482,6 +488,10 @@ const styles = StyleSheet.create({
   feedback: {
     minHeight: 40,
     marginTop: 10,
+    gap: 6,
+  },
+  noticesTop: {
+    marginTop: 12,
     gap: 6,
   },
   hint: {

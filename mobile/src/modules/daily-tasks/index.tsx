@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTasks } from '@/data/tasks-context';
 import { AddTaskModal } from '@/components/AddTaskModal';
 import { TaskCard } from '@/components/TaskCard';
@@ -35,6 +36,7 @@ export function DailyTasksScreen() {
   const [now, setNow] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [addOpen, setAddOpen] = useState(false);
+  const insets = useSafeAreaInsets();
   // 惰性初始化,实例稳定;不用 ref,避免渲染期读写
   const [slide] = useState(() => new Animated.Value(0));
 
@@ -183,7 +185,11 @@ export function DailyTasksScreen() {
       </Animated.View>
 
       <Pressable
-        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        style={({ pressed }) => [
+          styles.fab,
+          { bottom: 24 + insets.bottom },
+          pressed && styles.fabPressed,
+        ]}
         onPress={() => setAddOpen(true)}
         hitSlop={8}
         accessibilityRole="button"
@@ -358,7 +364,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    bottom: 24,
     width: 58,
     height: 58,
     borderRadius: radius.pill,
