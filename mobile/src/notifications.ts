@@ -57,6 +57,22 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   }
 }
 
+/**
+ * 确保精确闹钟权限:未授权时在安卓 14+ 会跳系统设置引导用户开启,
+ * 安卓 12/13 默认已授权,直接返回。不阻塞保存(未授权时退化为可延迟闹钟)。
+ */
+export async function ensureExactAlarmPermission(): Promise<boolean> {
+  if (!NOTIFICATIONS_SUPPORTED || Platform.OS !== 'android') return true;
+  try {
+    const current = await Notifications.getExactAlarmPermissionsAsync();
+    if (current.granted) return true;
+    const requested = await Notifications.requestExactAlarmPermissionsAsync();
+    return requested.granted;
+  } catch {
+    return false;
+  }
+}
+
 /** 通知标识:与任务 id 绑定,便于更新/删除时按同一 id 取消重排 */
 const identifierOf = (taskId: string) => `task-${taskId}`;
 /** 短信提醒使用独立标识,与闹钟互不影响 */

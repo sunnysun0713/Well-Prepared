@@ -13,7 +13,11 @@ import { reminderLabel } from '@/data/reminder-options';
 import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import { dateKeyOf, type Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
-import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
+import {
+  ensureExactAlarmPermission,
+  ensureNotificationPermission,
+  NOTIFICATIONS_SUPPORTED,
+} from '@/notifications';
 import { ReminderTimeModal } from './ReminderTimeModal';
 import { TimeRangeModal } from './TimeRangeModal';
 
@@ -86,6 +90,8 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
         );
         return;
       }
+      // 精确闹钟权限:安卓 14+ 会跳系统设置引导开启;不阻塞保存
+      void ensureExactAlarmPermission();
     }
     const fields = {
       title: t,
