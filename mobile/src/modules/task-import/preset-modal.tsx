@@ -16,6 +16,11 @@ import { useAiSettings } from '@/ai/settings';
 const ACCENT = '#4F46E5';
 const NAME_MAX_LENGTH = 12;
 
+/** 编辑模板时只展示用户写的规则部分,隐藏自动追加的 JSON 输出约束 */
+function stripOutputRules(prompt: string): string {
+  return prompt.replace(OUTPUT_RULES, '').trim();
+}
+
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -28,6 +33,7 @@ export function PresetModal({ visible, onClose }: Props) {
   const [prevVisible, setPrevVisible] = useState(visible);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
+  const [draftRules, setDraftRules] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
@@ -40,6 +46,7 @@ export function PresetModal({ visible, onClose }: Props) {
     if (visible) {
       setRenamingId(null);
       setDraftName('');
+      setDraftRules('');
       setPendingDeleteId(null);
       setAdding(false);
       setNewName('');
@@ -51,6 +58,7 @@ export function PresetModal({ visible, onClose }: Props) {
   const startRename = (preset: ExtractionPreset) => {
     setRenamingId(preset.id);
     setDraftName(preset.name);
+    setDraftRules(stripOutputRules(preset.prompt));
     setPendingDeleteId(null);
   };
 
@@ -58,9 +66,17 @@ export function PresetModal({ visible, onClose }: Props) {
     if (!renamingId) return;
     const name = draftName.trim().slice(0, NAME_MAX_LENGTH);
     if (!name) return;
+    const rules = draftRules.trim();
+    const prompt = rules
+      ? rules.includes('只输出 JSON')
+        ? rules
+        : `${rules}\n${OUTPUT_RULES}`
+      : GENERAL_PROMPT;
     updateSettings({
       ...settings,
-      templates: templates.map((t) => (t.id === renamingId ? { ...t, name } : t)),
+      templates: templates.map((t) =>
+        t.id === renamingId ? { ...t, name, prompt } : t,
+      ),
     });
     setRenamingId(null);
   };
@@ -116,7 +132,7 @@ export function PresetModal({ visible, onClose }: Props) {
         <Pressable style={styles.backdrop} onPress={onClose}>
           <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.title}>模板</Text>
-            <Text style={styles.hint}>点模板切换;✏️ 改名,🗑️ 删除,内置模板也可删除</Text>
+            <Text style={styles.hint}>点模板切换;✏️ 编辑名称与规则,🗑️ 删除,内置模板也可删除</Text>
 
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
               {templates.map((preset) => {
@@ -194,17 +210,28 @@ export function PresetModal({ visible, onClose }: Props) {
 
             {renamingPreset && (
               <View style={styles.editBox}>
-                <Text style={styles.editLabel}>重命名「{renamingPreset.name}」</Text>
+                <Text style={styles.editLabel}>编辑「{renamingPreset.name}」</Text>
                 <TextInput
                   value={draftName}
                   onChangeText={setDraftName}
                   style={styles.editInput}
-                  placeholder={`最多 ${NAME_MAX_LENGTH} 字`}
+                  placeholder={`模板名称(最多 ${NAME_MAX_LENGTH} 字)`}
                   placeholderTextColor="#9CA3AF"
                   maxLength={NAME_MAX_LENGTH}
                   autoFocus
-                  onSubmitEditing={saveRename}
                 />
+                <TextInput
+                  value={draftRules}
+                  onChangeText={setDraftRules}
+                  style={[styles.editInput, styles.promptInput]}
+                  placeholder="提取规则(可选),例如:从图片中提取所有会议安排,备注写地点"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  textAlignVertical="top"
+                />
+                <Text style={styles.promptHint}>
+                  无特殊要求可以不填,AI 会自己为你规划;JSON 输出格式会自动补充
+                </Text>
                 <View style={styles.editActions}>
                   <Pressable
                     style={styles.editCancel}
@@ -213,7 +240,7 @@ export function PresetModal({ visible, onClose }: Props) {
                     <Text style={styles.editCancelText}>取消</Text>
                   </Pressable>
                   <Pressable style={styles.editSave} onPress={saveRename}>
-                    <Text style={styles.editSaveText}>保存名称</Text>
+                    <Text style={styles.editSaveText}>保存</Text>
                   </Pressable>
                 </View>
               </View>
