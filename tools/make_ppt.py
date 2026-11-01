@@ -333,8 +333,8 @@ for i, (t, d, fg, bg) in enumerate(provs):
     box_text(shape, [[(t + '   ', 13.5, fg, True), (d, 11.5, GRAY, False)]], align=PP_ALIGN.LEFT)
 shape = add_box(s, 7.75, 1.7, 4.65, 4.0, fill=CARD)
 box_text(shape, [[('提取模板(可自定义)', 15, INDIGO, True)],
-                 [('· 内置 4 套预设模板,可改名、改提示词', 12.5, DARK, False)],
-                 [('· 同一图片换模板即换提取口径', 12.5, DARK, False)],
+                 [('· 内置 4 套预设:通用/课程表/会议通知/手写日程', 12.5, DARK, False)],
+                 [('· 可新增自定义模板(自定义名称与提示词)', 12.5, DARK, False)],
                  [('· 导入模式:自动直达 / 确认勾选', 12.5, DARK, False)],
                  [('· 导入即规划:预设自动挂载闹钟 / 短信提醒', 12.5, DARK, False)]],
          align=PP_ALIGN.LEFT, line_spacing=1.25, space_after=6)
