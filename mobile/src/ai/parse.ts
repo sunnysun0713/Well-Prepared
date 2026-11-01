@@ -59,11 +59,15 @@ export function normalizeDate(value: unknown, today: Date): string {
     return dateKeyOf(today);
   }
 
-  // 缺年份:M月D日,按今年处理
+  // 缺年份:M月D日,按今年处理;若已过则顺延到明年(与「星期X」取下一次出现保持一致)
   const md = s.match(/^(\d{1,2})月(\d{1,2})日?$/);
   if (md) {
     const d = new Date(today.getFullYear(), Number(md[1]) - 1, Number(md[2]));
     if (d.getMonth() === Number(md[1]) - 1 && d.getDate() === Number(md[2])) {
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      if (d.getTime() < todayStart.getTime()) {
+        d.setFullYear(d.getFullYear() + 1);
+      }
       return dateKeyOf(d);
     }
     return dateKeyOf(today);
