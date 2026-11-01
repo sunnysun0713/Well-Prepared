@@ -10,36 +10,49 @@ import {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
-import { DEFAULT_PRESET_ID } from './presets';
+import { DEFAULT_PRESET_ID, PRESETS, type ExtractionPreset } from './presets';
+import { PROVIDERS } from './providers';
 
-/** AI 设置:所选视觉服务 + API key + 导入模式 + 提取预设 + 导入时自动闹钟;数据结构变化时改版本号 */
+/** AI 设置:视觉服务 + API key + 导入模式 + 模板 + 导入时自动提醒;数据结构变化时改版本号 */
 export interface AiSettings {
   providerId: string;
   apiKey: string;
   /** true = 提取后直接写入任务;false = 弹确认列表由用户勾选 */
   autoImport: boolean;
-  /** 当前提取预设模板 id(见 presets.ts) */
+  /** 提取模板列表(内置模板与自定义模板都在这里,可增删) */
+  templates: ExtractionPreset[];
+  /** 当前使用的模板 id;模板被删空时为空串 */
   presetId: string;
-  /** 预设自定义名称:presetId → 名称;未设置的预设使用默认名 */
-  presetNames: Record<string, string>;
-  /** 导入任务时自动设置的提醒提前分钟数;null 表示不自动设置 */
+  /** 导入任务时自动设置的闹钟提前分钟数;null 表示不自动设置 */
   importReminderMinutes: number | null;
   /** 导入任务时自动闹钟使用的铃声 id */
   importReminderSound: string;
+  /** 导入任务时自动设置的短信提醒提前分钟数;null 表示不自动设置 */
+  importSmsRemindMinutes: number | null;
+  /** 导入任务时短信提醒使用的铃声 id */
+  importSmsRemindSound: string;
 }
 
 const STORAGE_KEY = 'ai-settings-v1';
+
+/** 内置模板副本,避免运行时改动污染常量 */
+function defaultTemplates(): ExtractionPreset[] {
+  return PRESETS.map((preset) => ({ ...preset }));
+}
+
 const DEFAULT_SETTINGS: AiSettings = {
-  providerId: 'mock',
+  providerId: 'deepseek',
   apiKey: '',
   autoImport: false,
+  templates: defaultTemplates(),
   presetId: DEFAULT_PRESET_ID,
-  presetNames: {},
   importReminderMinutes: null,
   importReminderSound: DEFAULT_REMINDER_SOUND,
+  importSmsRemindMinutes: null,
+  importSmsRemindSound: DEFAULT_REMINDER_SOUND,
 };
 
-/** 解析存档中的预设名称:只保留非空字符串值 */
+/** 旧版本的预设改名表,用于迁移到模板列表 */
 function parsePresetNames(value: unknown): Record<string, string> {
   if (typeof value !== 'object' || value === null) return {};
   const names: Record<string, string> = {};
@@ -47,6 +60,32 @@ function parsePresetNames(value: unknown): Record<string, string> {
     if (typeof name === 'string' && name.trim()) names[id] = name;
   }
   return names;
+}
+
+/** 校验存档中的模板数组;全部无效时返回 null,使用默认模板 */
+function parseTemplates(value: unknown): ExtractionPreset[] | null {
+  if (!Array.isArray(value)) return null;
+  if (value.length === 0) return [];
+  const templates: ExtractionPreset[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) continue;
+    const raw = item as Record<string, unknown>;
+    if (
+      typeof raw.id !== 'string' ||
+      typeof raw.name !== 'string' ||
+      typeof raw.prompt !== 'string'
+    ) {
+      continue;
+    }
+    templates.push({
+      id: raw.id,
+      name: raw.name,
+      icon: typeof raw.icon === 'string' && raw.icon ? raw.icon : '📄',
+      description: typeof raw.description === 'string' ? raw.description : '',
+      prompt: raw.prompt,
+    });
+  }
+  return templates.length > 0 ? templates : null;
 }
 
 type Action = { type: 'REPLACE'; settings: AiSettings };
@@ -81,18 +120,29 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       if (raw) {
         try {
-          const parsed = JSON.parse(raw) as Partial<AiSettings>;
+          const parsed = JSON.parse(raw) as Partial<AiSettings> & { presetNames?: unknown };
+          const legacyNames = parsePresetNames(parsed.presetNames);
+          const templates = parseTemplates(parsed.templates) ?? defaultTemplates().map(
+            (preset) => ({ ...preset, name: legacyNames[preset.id] ?? preset.name }),
+          );
+          const presetId =
+            typeof parsed.presetId === 'string' &&
+            templates.some((template) => template.id === parsed.presetId)
+              ? parsed.presetId
+              : templates[0]?.id ?? '';
           dispatch({
             type: 'REPLACE',
             settings: {
               providerId:
-                typeof parsed.providerId === 'string' ? parsed.providerId : DEFAULT_SETTINGS.providerId,
+                typeof parsed.providerId === 'string' &&
+                PROVIDERS.some((provider) => provider.id === parsed.providerId)
+                  ? parsed.providerId
+                  : DEFAULT_SETTINGS.providerId,
               apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : '',
               autoImport:
                 typeof parsed.autoImport === 'boolean' ? parsed.autoImport : DEFAULT_SETTINGS.autoImport,
-              presetId:
-                typeof parsed.presetId === 'string' ? parsed.presetId : DEFAULT_SETTINGS.presetId,
-              presetNames: parsePresetNames(parsed.presetNames),
+              templates,
+              presetId,
               importReminderMinutes:
                 typeof parsed.importReminderMinutes === 'number' &&
                 Number.isInteger(parsed.importReminderMinutes) &&
@@ -103,6 +153,16 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
                 typeof parsed.importReminderSound === 'string'
                   ? parsed.importReminderSound
                   : DEFAULT_SETTINGS.importReminderSound,
+              importSmsRemindMinutes:
+                typeof parsed.importSmsRemindMinutes === 'number' &&
+                Number.isInteger(parsed.importSmsRemindMinutes) &&
+                parsed.importSmsRemindMinutes >= 0
+                  ? parsed.importSmsRemindMinutes
+                  : null,
+              importSmsRemindSound:
+                typeof parsed.importSmsRemindSound === 'string'
+                  ? parsed.importSmsRemindSound
+                  : DEFAULT_SETTINGS.importSmsRemindSound,
             },
           });
         } catch {

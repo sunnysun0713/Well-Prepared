@@ -1,10 +1,8 @@
-import { mockProvider } from './mock-provider';
 import { createOpenAICompatProvider } from './openai-compat';
 import type { VisionProvider } from './types';
 
-/** 视觉提取服务注册表:新增服务在此登记。提取提示词由预设模板(见 presets.ts)提供。 */
+/** 视觉提取服务注册表:新增服务在此登记。提取提示词由模板(见 presets.ts)提供。 */
 export const PROVIDERS: VisionProvider[] = [
-  mockProvider,
   createOpenAICompatProvider({
     id: 'deepseek',
     label: 'DeepSeek 视觉',
@@ -25,7 +23,7 @@ export const PROVIDERS: VisionProvider[] = [
   }),
 ];
 
-/** 按 id 取服务,未知 id 兜底为模拟提取器 */
+/** 按 id 取服务,未知 id 兜底为第一个可用服务 */
 export function getProvider(id: string): VisionProvider {
-  return PROVIDERS.find((p) => p.id === id) ?? mockProvider;
+  return PROVIDERS.find((p) => p.id === id) ?? PROVIDERS[0];
 }

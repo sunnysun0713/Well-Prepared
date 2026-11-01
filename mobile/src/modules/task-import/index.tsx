@@ -3,11 +3,9 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'rea
 import * as ImagePicker from 'expo-image-picker';
 import { extractTasksFromImage } from '@/ai/extract';
 import { commitImport, draftsOf } from '@/ai/import';
-import { getPreset, presetDisplayName } from '@/ai/presets';
 import { getProvider } from '@/ai/providers';
 import { useAiSettings } from '@/ai/settings';
 import type { ExtractedTask } from '@/ai/types';
-import { reminderLabel } from '@/data/reminder-options';
 import { useTasks } from '@/data/tasks-context';
 import { AiSettingsModal } from './ai-settings-modal';
 import { ImportConfirmModal } from './import-confirm-modal';
@@ -42,8 +40,9 @@ export function TaskImportScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
-  const preset = getPreset(settings.presetId);
-  const presetName = presetDisplayName(preset, settings.presetNames);
+  const preset =
+    settings.templates.find((template) => template.id === settings.presetId) ??
+    settings.templates[0];
   const importReminder = settings.importReminderMinutes;
 
   /** 从相册选图:图库在安卓/Web 无需权限,iOS 由系统弹窗处理 */
@@ -84,18 +83,21 @@ export function TaskImportScreen() {
     setExtracting(true);
     try {
       const provider = getProvider(settings.providerId);
-      if (!provider.mock && !settings.apiKey) {
+      if (!settings.apiKey) {
         throw new Error('请先在右上角设置中填写 API Key');
+      }
+      if (!preset) {
+        throw new Error('请先在「模板」中添加一个提取模板');
       }
       const tasks = await extractTasksFromImage(provider, settings.apiKey, image, preset.prompt);
       // 自动导入模式:直接归一化写入,不弹确认列表
       if (settings.autoImport) {
-        const count = commitImport(
-          draftsOf(tasks, new Date()),
-          addTask,
-          settings.importReminderMinutes,
-          settings.importReminderSound,
-        );
+        const count = commitImport(draftsOf(tasks, new Date()), addTask, {
+          remindAdvanceMinutes: settings.importReminderMinutes,
+          remindSound: settings.importReminderSound,
+          smsRemindAdvanceMinutes: settings.importSmsRemindMinutes,
+          smsRemindSound: settings.importSmsRemindSound,
+        });
         setImportNote(
           count > 0 ? `已自动导入 ${count} 条任务,到「每日任务」查看` : '没有识别到可导入的任务',
         );
@@ -118,7 +120,7 @@ export function TaskImportScreen() {
           <View style={styles.topLeft}>
             <Pressable style={styles.presetChip} onPress={() => setPresetOpen(true)} hitSlop={4}>
               <Text style={styles.presetChipText} numberOfLines={1}>
-                {preset.icon} {presetName} ▾
+                模板 ▾
               </Text>
             </Pressable>
             <Pressable
@@ -133,7 +135,7 @@ export function TaskImportScreen() {
                 ]}
                 numberOfLines={1}
               >
-                ⏰ {importReminder != null ? reminderLabel(importReminder) : '闹钟关'}
+                规划
               </Text>
             </Pressable>
           </View>

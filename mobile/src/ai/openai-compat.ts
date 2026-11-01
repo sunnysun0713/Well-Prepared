@@ -21,7 +21,6 @@ export function createOpenAICompatProvider(config: CompatConfig): VisionProvider
   return {
     id: config.id,
     label: config.label,
-    mock: false,
     async extractTasks(
       imageBase64: string,
       apiKey: string,

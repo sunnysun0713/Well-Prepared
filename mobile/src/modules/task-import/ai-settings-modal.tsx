@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** AI 设置弹窗:选择视觉服务(Mock / 真实接口)+ 填写 API key */
+/** AI 设置弹窗:选择视觉服务 + 填写 API key */
 export function AiSettingsModal({ visible, onClose }: Props) {
   const { settings, updateSettings } = useAiSettings();
   const [prevVisible, setPrevVisible] = useState(visible);
@@ -26,11 +26,9 @@ export function AiSettingsModal({ visible, onClose }: Props) {
     }
   }
 
-  const provider = PROVIDERS.find((p) => p.id === providerId);
-
   const save = () => {
-    // 展开已有设置,避免覆盖导入模式等其它字段
-    updateSettings({ ...settings, providerId, apiKey: provider?.mock ? '' : apiKey.trim() });
+    // 展开已有设置,避免覆盖导入模式、模板等其它字段
+    updateSettings({ ...settings, providerId, apiKey: apiKey.trim() });
     onClose();
   };
 
@@ -56,26 +54,19 @@ export function AiSettingsModal({ visible, onClose }: Props) {
             })}
           </View>
 
-          {provider && !provider.mock && (
-            <>
-              <Text style={styles.label}>API Key</Text>
-              <TextInput
-                value={apiKey}
-                onChangeText={setApiKey}
-                style={styles.input}
-                placeholder="粘贴服务商提供的 API Key"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <Text style={styles.note}>
-                真实接口在浏览器自测时可能受跨域限制,手机端无此问题
-              </Text>
-            </>
-          )}
-          {provider?.mock && (
-            <Text style={styles.note}>模拟模式返回示例任务,无需 key,用于自测流程</Text>
-          )}
+          <Text style={styles.label}>API Key</Text>
+          <TextInput
+            value={apiKey}
+            onChangeText={setApiKey}
+            style={styles.input}
+            placeholder="粘贴服务商提供的 API Key"
+            placeholderTextColor="#9CA3AF"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <Text style={styles.note}>
+            真实接口在浏览器自测时可能受跨域限制,手机端无此问题
+          </Text>
 
           <View style={styles.actions}>
             <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>

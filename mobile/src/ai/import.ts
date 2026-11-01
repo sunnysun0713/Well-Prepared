@@ -16,15 +16,22 @@ export function draftsOf(tasks: ExtractedTask[], today: Date): ImportDraft[] {
   }));
 }
 
+/** 导入时自动应用的提醒设置(闹钟与短信提醒各自独立) */
+export interface ImportReminderOptions {
+  remindAdvanceMinutes?: number | null;
+  remindSound?: string;
+  smsRemindAdvanceMinutes?: number | null;
+  smsRemindSound?: string;
+}
+
 /**
  * 勾选的条目归一化为任务写入参数;标题为空或时间无效的条目被丢弃。
- * remindAdvanceMinutes 传入时,所有导入任务自动设置该提醒与对应铃声。
+ * 传入提醒设置时,所有导入任务自动带上对应提醒与铃声。
  */
 export function buildImportTasks(
   items: ImportDraft[],
   today: Date,
-  remindAdvanceMinutes?: number | null,
-  remindSound?: string,
+  reminders?: ImportReminderOptions,
 ): { date: Date; task: Task }[] {
   const out: { date: Date; task: Task }[] = [];
   items.forEach((it, index) => {
@@ -38,6 +45,8 @@ export function buildImportTasks(
     else if (end && end <= start) end = '';
     const key = normalizeDate(it.dateText, today);
     const [y, m, d] = key.split('-').map(Number);
+    const remindMinutes = reminders?.remindAdvanceMinutes ?? undefined;
+    const smsMinutes = reminders?.smsRemindAdvanceMinutes ?? undefined;
     out.push({
       date: new Date(y, m - 1, d),
       task: {
@@ -46,8 +55,10 @@ export function buildImportTasks(
         startTime: start,
         endTime: end,
         note: it.note.trim() || undefined,
-        remindAdvanceMinutes: remindAdvanceMinutes ?? undefined,
-        remindSound: remindAdvanceMinutes != null ? remindSound : undefined,
+        remindAdvanceMinutes: remindMinutes,
+        remindSound: remindMinutes != null ? reminders?.remindSound : undefined,
+        smsRemindAdvanceMinutes: smsMinutes,
+        smsRemindSound: smsMinutes != null ? reminders?.smsRemindSound : undefined,
       },
     });
   });
@@ -58,10 +69,9 @@ export function buildImportTasks(
 export function commitImport(
   items: ImportDraft[],
   addTask: (date: Date, task: Task) => void,
-  remindAdvanceMinutes?: number | null,
-  remindSound?: string,
+  reminders?: ImportReminderOptions,
 ): number {
-  const built = buildImportTasks(items, new Date(), remindAdvanceMinutes, remindSound);
+  const built = buildImportTasks(items, new Date(), reminders);
   built.forEach(({ date, task }) => addTask(date, task));
   return built.length;
 }

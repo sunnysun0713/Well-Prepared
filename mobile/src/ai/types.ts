@@ -36,8 +36,6 @@ export interface VisionProvider {
   id: string;
   /** 设置界面展示名 */
   label: string;
-  /** 本地模拟提取,不需要 API key */
-  mock: boolean;
-  /** prompt 由当前预设模板提供,不同预设可给出不同提取指令 */
+  /** prompt 由当前模板提供,不同模板可给出不同提取指令 */
   extractTasks(imageBase64: string, apiKey: string, prompt: string): Promise<RawTaskItem[]>;
 }

@@ -13,7 +13,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** 任务载入的闹钟选项:开启后 AI 提取导入的任务自动带上该提醒 */
+/** 任务载入的「规划」选项:设置 AI 提取导入任务时自动带上的闹钟与短信提醒 */
 export function ImportReminderModal({ visible, onClose }: Props) {
   const { settings, updateSettings } = useAiSettings();
   const [prevVisible, setPrevVisible] = useState(visible);
@@ -21,7 +21,14 @@ export function ImportReminderModal({ visible, onClose }: Props) {
   const [sound, setSound] = useState(
     settings.importReminderSound || DEFAULT_REMINDER_SOUND,
   );
+  const [smsRemind, setSmsRemind] = useState<number | null>(
+    settings.importSmsRemindMinutes,
+  );
+  const [smsSound, setSmsSound] = useState(
+    settings.importSmsRemindSound || DEFAULT_REMINDER_SOUND,
+  );
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [smsReminderOpen, setSmsReminderOpen] = useState(false);
   const [error, setError] = useState('');
 
   // 打开弹窗时重置为已保存设置(渲染期间派生,避免 effect 内 setState)
@@ -30,21 +37,30 @@ export function ImportReminderModal({ visible, onClose }: Props) {
     if (visible) {
       setRemind(settings.importReminderMinutes);
       setSound(settings.importReminderSound || DEFAULT_REMINDER_SOUND);
+      setSmsRemind(settings.importSmsRemindMinutes);
+      setSmsSound(settings.importSmsRemindSound || DEFAULT_REMINDER_SOUND);
       setReminderOpen(false);
+      setSmsReminderOpen(false);
       setError('');
     }
   }
 
   const save = async () => {
-    // 开启自动闹钟前确认通知权限,避免"设了却不响"
-    if (remind != null && NOTIFICATIONS_SUPPORTED) {
+    // 开启自动提醒前确认通知权限,避免"设了却不响"
+    if ((remind != null || smsRemind != null) && NOTIFICATIONS_SUPPORTED) {
       const granted = await ensureNotificationPermission();
       if (!granted) {
-        setError('通知权限被拒绝,闹钟不会生效;请开启权限或关闭自动闹钟后再保存');
+        setError('通知权限被拒绝,提醒不会生效;请开启权限或关闭提醒后再保存');
         return;
       }
     }
-    updateSettings({ ...settings, importReminderMinutes: remind, importReminderSound: sound });
+    updateSettings({
+      ...settings,
+      importReminderMinutes: remind,
+      importReminderSound: sound,
+      importSmsRemindMinutes: smsRemind,
+      importSmsRemindSound: smsSound,
+    });
     onClose();
   };
 
@@ -52,9 +68,10 @@ export function ImportReminderModal({ visible, onClose }: Props) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>导入闹钟</Text>
-          <Text style={styles.hint}>开启后,AI 提取导入的任务会自动带上该提醒</Text>
+          <Text style={styles.title}>规划</Text>
+          <Text style={styles.hint}>AI 提取导入的任务会自动带上这里的提醒</Text>
 
+          <Text style={styles.label}>闹钟提醒</Text>
           <View style={styles.reminderRow}>
             <Switch
               value={remind != null}
@@ -73,6 +90,30 @@ export function ImportReminderModal({ visible, onClose }: Props) {
               <Text style={styles.reminderButtonHint}>设置时间</Text>
             </Pressable>
           </View>
+
+          <Text style={styles.label}>短信提醒</Text>
+          <View style={styles.reminderRow}>
+            <Switch
+              value={smsRemind != null}
+              onValueChange={(on) => setSmsRemind(on ? (smsRemind ?? 10) : null)}
+              trackColor={{ false: '#D1D5DB', true: '#C7D2FE' }}
+              thumbColor={smsRemind != null ? ACCENT : '#F3F4F6'}
+            />
+            <Pressable
+              style={[
+                styles.reminderButton,
+                smsRemind == null && styles.reminderButtonDisabled,
+              ]}
+              disabled={smsRemind == null}
+              onPress={() => setSmsReminderOpen(true)}
+            >
+              <Text style={styles.reminderButtonText}>
+                {smsRemind != null ? reminderLabel(smsRemind) : '未开启'}
+              </Text>
+              <Text style={styles.reminderButtonHint}>设置时间</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.note}>短信提醒会单独弹出一条消息,时间可与闹钟不同</Text>
           {!NOTIFICATIONS_SUPPORTED && (
             <Text style={styles.note}>提醒仅在手机上生效,浏览器预览不支持</Text>
           )}
@@ -99,6 +140,18 @@ export function ImportReminderModal({ visible, onClose }: Props) {
         }}
         sound={sound}
         onSelectSound={setSound}
+      />
+
+      <ReminderTimeModal
+        visible={smsReminderOpen}
+        value={smsRemind}
+        onClose={() => setSmsReminderOpen(false)}
+        onSelect={setSmsRemind}
+        onDeleted={(minutes) => {
+          if (smsRemind === minutes) setSmsRemind(10);
+        }}
+        sound={smsSound}
+        onSelectSound={setSmsSound}
       />
     </Modal>
   );
@@ -130,8 +183,14 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: 8,
     lineHeight: 16,
+  },
+  label: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 8,
+    marginBottom: 6,
   },
   reminderRow: {
     flexDirection: 'row',

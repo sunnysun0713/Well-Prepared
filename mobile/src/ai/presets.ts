@@ -1,22 +1,21 @@
 /**
- * 提取预设模板:每个预设拥有独立的提示词与展示信息。
- * 新增预设 = 在 PRESETS 里登记一条;预设字段可继续扩展(如个性化选项),
- * 调用方统一通过 getPreset 取用。
+ * 提取模板:每个模板拥有独立的提示词与展示信息。
+ * PRESETS 是内置模板的初始值;运行时的模板列表保存在 AI 设置里,可增删。
  */
 
 export interface ExtractionPreset {
   id: string;
-  /** 预设名称,显示在左上角选择器与弹窗中 */
+  /** 模板名称,显示在模板弹窗中 */
   name: string;
   icon: string;
-  /** 一句话说明,帮助用户选对预设 */
+  /** 一句话说明,帮助用户选对模板 */
   description: string;
   /** 发送给视觉模型的提取提示词 */
   prompt: string;
 }
 
-/** 所有预设共用的输出格式约束 */
-const OUTPUT_RULES = `只输出 JSON,格式:
+/** 所有模板共用的输出格式约束(自定义模板保存时自动追加) */
+export const OUTPUT_RULES = `只输出 JSON,格式:
 {"tasks":[{"title":"简短任务名","date":"YYYY-MM-DD,或 今天/明天/后天/星期X,无法判断则留空","start":"24小时制 HH:mm,无则留空","end":"24小时制 HH:mm,无则留空","note":"备注/地点,无则省略"}]}
 要求:图片中没有任务时 tasks 为空数组;不要输出 JSON 以外的任何内容。`;
 
@@ -53,15 +52,7 @@ export const PRESETS: ExtractionPreset[] = [
 
 export const DEFAULT_PRESET_ID = 'general';
 
-/** 按 id 取预设,未知 id 兜底为通用预设 */
+/** 按 id 取内置预设,未知 id 兜底为第一个内置预设(仅作默认值参考) */
 export function getPreset(id: string): ExtractionPreset {
   return PRESETS.find((p) => p.id === id) ?? PRESETS[0];
-}
-
-/** 预设显示名:有自定义名称时优先,否则用默认名 */
-export function presetDisplayName(
-  preset: ExtractionPreset,
-  customNames: Record<string, string>,
-): string {
-  return customNames[preset.id]?.trim() || preset.name;
 }

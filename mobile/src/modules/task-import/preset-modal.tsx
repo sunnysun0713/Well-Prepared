@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { getPreset, PRESETS, presetDisplayName } from '@/ai/presets';
+import { OUTPUT_RULES, type ExtractionPreset } from '@/ai/presets';
 import { useAiSettings } from '@/ai/settings';
 
 const ACCENT = '#4F46E5';
@@ -21,43 +21,94 @@ interface Props {
   onClose: () => void;
 }
 
-/** 预设模板选择弹窗:选择预设 + 自定义命名(留空恢复默认名) */
+/** 模板弹窗:选择/重命名/删除/新增提取模板(内置模板也可删除) */
 export function PresetModal({ visible, onClose }: Props) {
   const { settings, updateSettings } = useAiSettings();
-  const active = getPreset(settings.presetId);
+  const templates = settings.templates;
   const [prevVisible, setPrevVisible] = useState(visible);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newPrompt, setNewPrompt] = useState('');
+  const [formError, setFormError] = useState('');
 
-  // 打开弹窗时清空重命名状态(渲染期间派生,避免 effect 内 setState)
+  // 打开弹窗时清空编辑状态(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
       setRenamingId(null);
       setDraftName('');
+      setPendingDeleteId(null);
+      setAdding(false);
+      setNewName('');
+      setNewDescription('');
+      setNewPrompt('');
+      setFormError('');
     }
   }
 
-  const startRename = (id: string) => {
-    setRenamingId(id);
-    setDraftName(presetDisplayName(getPreset(id), settings.presetNames));
+  const startRename = (preset: ExtractionPreset) => {
+    setRenamingId(preset.id);
+    setDraftName(preset.name);
+    setPendingDeleteId(null);
   };
 
   const saveRename = () => {
     if (!renamingId) return;
     const name = draftName.trim().slice(0, NAME_MAX_LENGTH);
-    const next = { ...settings.presetNames };
-    if (name) {
-      next[renamingId] = name;
-    } else {
-      // 留空 = 恢复默认名称
-      delete next[renamingId];
-    }
-    updateSettings({ ...settings, presetNames: next });
+    if (!name) return;
+    updateSettings({
+      ...settings,
+      templates: templates.map((t) => (t.id === renamingId ? { ...t, name } : t)),
+    });
     setRenamingId(null);
   };
 
-  const renamingPreset = renamingId ? getPreset(renamingId) : null;
+  const removeTemplate = (id: string) => {
+    const next = templates.filter((t) => t.id !== id);
+    updateSettings({
+      ...settings,
+      templates: next,
+      presetId:
+        settings.presetId === id ? next[0]?.id ?? '' : settings.presetId,
+    });
+    setPendingDeleteId(null);
+  };
+
+  const addTemplate = () => {
+    const name = newName.trim().slice(0, NAME_MAX_LENGTH);
+    const rules = newPrompt.trim();
+    if (!name) {
+      setFormError('请填写模板名称');
+      return;
+    }
+    if (!rules) {
+      setFormError('请填写提取规则');
+      return;
+    }
+    // 输出格式约束自动补充,避免自定义模板让模型输出无法解析的内容
+    const prompt = rules.includes('只输出 JSON') ? rules : `${rules}\n${OUTPUT_RULES}`;
+    const template: ExtractionPreset = {
+      id: `custom-${Date.now()}`,
+      name,
+      icon: '📄',
+      description: newDescription.trim() || '自定义模板',
+      prompt,
+    };
+    updateSettings({
+      ...settings,
+      templates: [...templates, template],
+      presetId: template.id,
+    });
+    setAdding(false);
+  };
+
+  const renamingPreset = renamingId
+    ? templates.find((t) => t.id === renamingId)
+    : undefined;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -67,12 +118,13 @@ export function PresetModal({ visible, onClose }: Props) {
       >
         <Pressable style={styles.backdrop} onPress={onClose}>
           <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.title}>选择预设模板</Text>
-            <Text style={styles.hint}>不同预设使用不同的提取规则,点 ✏️ 可自定义名称</Text>
+            <Text style={styles.title}>模板</Text>
+            <Text style={styles.hint}>点模板切换;✏️ 改名,🗑️ 删除,内置模板也可删除</Text>
 
             <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-              {PRESETS.map((preset) => {
-                const selected = preset.id === active.id;
+              {templates.map((preset) => {
+                const selected = preset.id === settings.presetId;
+                const confirmingDelete = pendingDeleteId === preset.id;
                 return (
                   <Pressable
                     key={preset.id}
@@ -85,51 +137,149 @@ export function PresetModal({ visible, onClose }: Props) {
                     <Text style={styles.rowIcon}>{preset.icon}</Text>
                     <View style={styles.rowBody}>
                       <Text style={[styles.rowName, selected && styles.rowNameActive]}>
-                        {presetDisplayName(preset, settings.presetNames)}
+                        {preset.name}
                       </Text>
                       <Text style={styles.rowDesc}>{preset.description}</Text>
                     </View>
-                    <Pressable
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        startRename(preset.id);
-                      }}
-                      hitSlop={8}
-                      style={styles.renameButton}
-                    >
-                      <Text style={styles.renameIcon}>✏️</Text>
-                    </Pressable>
-                    {selected && <Text style={styles.check}>✓</Text>}
+                    {confirmingDelete ? (
+                      <View style={styles.deleteConfirm}>
+                        <Pressable
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            setPendingDeleteId(null);
+                          }}
+                          hitSlop={6}
+                        >
+                          <Text style={styles.cancelText}>取消</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            removeTemplate(preset.id);
+                          }}
+                          hitSlop={6}
+                        >
+                          <Text style={styles.dangerText}>删除</Text>
+                        </Pressable>
+                      </View>
+                    ) : (
+                      <>
+                        <Pressable
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            startRename(preset);
+                          }}
+                          hitSlop={8}
+                          style={styles.iconButton}
+                        >
+                          <Text style={styles.renameIcon}>✏️</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            setPendingDeleteId(preset.id);
+                            setRenamingId(null);
+                          }}
+                          hitSlop={8}
+                          style={styles.iconButton}
+                        >
+                          <Text style={styles.renameIcon}>🗑️</Text>
+                        </Pressable>
+                        {selected && <Text style={styles.check}>✓</Text>}
+                      </>
+                    )}
                   </Pressable>
                 );
               })}
+              {templates.length === 0 && (
+                <Text style={styles.empty}>还没有模板,点下方「添加模板」新建</Text>
+              )}
             </ScrollView>
 
             {renamingPreset && (
-              <View style={styles.renameBox}>
-                <Text style={styles.renameLabel}>重命名「{renamingPreset.name}」</Text>
+              <View style={styles.editBox}>
+                <Text style={styles.editLabel}>重命名「{renamingPreset.name}」</Text>
                 <TextInput
                   value={draftName}
                   onChangeText={setDraftName}
-                  style={styles.renameInput}
-                  placeholder={`最多 ${NAME_MAX_LENGTH} 字,留空恢复默认`}
+                  style={styles.editInput}
+                  placeholder={`最多 ${NAME_MAX_LENGTH} 字`}
                   placeholderTextColor="#9CA3AF"
                   maxLength={NAME_MAX_LENGTH}
                   autoFocus
                   onSubmitEditing={saveRename}
                 />
-                <View style={styles.renameActions}>
+                <View style={styles.editActions}>
                   <Pressable
-                    style={styles.renameCancel}
+                    style={styles.editCancel}
                     onPress={() => setRenamingId(null)}
                   >
-                    <Text style={styles.renameCancelText}>取消</Text>
+                    <Text style={styles.editCancelText}>取消</Text>
                   </Pressable>
-                  <Pressable style={styles.renameSave} onPress={saveRename}>
-                    <Text style={styles.renameSaveText}>保存名称</Text>
+                  <Pressable style={styles.editSave} onPress={saveRename}>
+                    <Text style={styles.editSaveText}>保存名称</Text>
                   </Pressable>
                 </View>
               </View>
+            )}
+
+            {adding && (
+              <View style={styles.editBox}>
+                <Text style={styles.editLabel}>添加模板</Text>
+                <TextInput
+                  value={newName}
+                  onChangeText={setNewName}
+                  style={styles.editInput}
+                  placeholder={`模板名称(最多 ${NAME_MAX_LENGTH} 字)`}
+                  placeholderTextColor="#9CA3AF"
+                  maxLength={NAME_MAX_LENGTH}
+                  autoFocus
+                />
+                <TextInput
+                  value={newDescription}
+                  onChangeText={setNewDescription}
+                  style={styles.editInput}
+                  placeholder="说明(可选)"
+                  placeholderTextColor="#9CA3AF"
+                  maxLength={40}
+                />
+                <TextInput
+                  value={newPrompt}
+                  onChangeText={setNewPrompt}
+                  style={[styles.editInput, styles.promptInput]}
+                  placeholder="提取规则,例如:从图片中提取所有会议安排,备注写地点"
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  textAlignVertical="top"
+                />
+                <Text style={styles.promptHint}>JSON 输出格式会自动补充</Text>
+                {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+                <View style={styles.editActions}>
+                  <Pressable
+                    style={styles.editCancel}
+                    onPress={() => setAdding(false)}
+                  >
+                    <Text style={styles.editCancelText}>取消</Text>
+                  </Pressable>
+                  <Pressable style={styles.editSave} onPress={addTemplate}>
+                    <Text style={styles.editSaveText}>保存模板</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+
+            {!adding && (
+              <Pressable
+                style={styles.addTemplateButton}
+                onPress={() => {
+                  setAdding(true);
+                  setRenamingId(null);
+                  setPendingDeleteId(null);
+                  setFormError('');
+                }}
+              >
+                <Text style={styles.addTemplateText}>＋ 添加模板</Text>
+              </Pressable>
             )}
 
             <Pressable style={styles.closeButton} onPress={onClose}>
@@ -151,7 +301,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: 320,
-    maxHeight: '85%',
+    maxHeight: '88%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingVertical: 16,
@@ -179,7 +329,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     borderRadius: 12,
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
@@ -211,7 +361,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     lineHeight: 16,
   },
-  renameButton: {
+  iconButton: {
     padding: 2,
   },
   renameIcon: {
@@ -222,19 +372,38 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: ACCENT,
   },
-  renameBox: {
+  deleteConfirm: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  dangerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#DC2626',
+  },
+  empty: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  editBox: {
     marginTop: 10,
     borderRadius: 12,
     backgroundColor: '#EEF2FF',
     padding: 10,
     gap: 8,
   },
-  renameLabel: {
+  editLabel: {
     fontSize: 12,
     fontWeight: '500',
     color: '#4338CA',
   },
-  renameInput: {
+  editInput: {
     height: 34,
     borderWidth: 1,
     borderColor: '#C7D2FE',
@@ -244,11 +413,23 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     backgroundColor: '#FFFFFF',
   },
-  renameActions: {
+  promptInput: {
+    height: 84,
+    paddingTop: 8,
+  },
+  promptHint: {
+    fontSize: 10,
+    color: '#6B7280',
+  },
+  formError: {
+    fontSize: 11,
+    color: '#DC2626',
+  },
+  editActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  renameCancel: {
+  editCancel: {
     flex: 1,
     height: 32,
     borderRadius: 16,
@@ -256,12 +437,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  renameCancelText: {
+  editCancelText: {
     fontSize: 13,
     fontWeight: '500',
     color: '#374151',
   },
-  renameSave: {
+  editSave: {
     flex: 1,
     height: 32,
     borderRadius: 16,
@@ -269,13 +450,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  renameSaveText: {
+  editSaveText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  addTemplateButton: {
+    marginTop: 10,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addTemplateText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: ACCENT,
+  },
   closeButton: {
-    marginTop: 12,
+    marginTop: 10,
     height: 38,
     borderRadius: 19,
     backgroundColor: '#F3F4F6',
