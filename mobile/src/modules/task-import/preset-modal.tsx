@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { OUTPUT_RULES, type ExtractionPreset } from '@/ai/presets';
+import { GENERAL_PROMPT, OUTPUT_RULES, type ExtractionPreset } from '@/ai/presets';
 import { useAiSettings } from '@/ai/settings';
 
 const ACCENT = '#4F46E5';
@@ -31,7 +31,6 @@ export function PresetModal({ visible, onClose }: Props) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newDescription, setNewDescription] = useState('');
   const [newPrompt, setNewPrompt] = useState('');
   const [formError, setFormError] = useState('');
 
@@ -44,7 +43,6 @@ export function PresetModal({ visible, onClose }: Props) {
       setPendingDeleteId(null);
       setAdding(false);
       setNewName('');
-      setNewDescription('');
       setNewPrompt('');
       setFormError('');
     }
@@ -85,17 +83,16 @@ export function PresetModal({ visible, onClose }: Props) {
       setFormError('请填写模板名称');
       return;
     }
-    if (!rules) {
-      setFormError('请填写提取规则');
-      return;
-    }
-    // 输出格式约束自动补充,避免自定义模板让模型输出无法解析的内容
-    const prompt = rules.includes('只输出 JSON') ? rules : `${rules}\n${OUTPUT_RULES}`;
+    // 规则可留空:使用通用提取规则;输出格式约束自动补充,避免模型输出无法解析的内容
+    const prompt = rules
+      ? rules.includes('只输出 JSON')
+        ? rules
+        : `${rules}\n${OUTPUT_RULES}`
+      : GENERAL_PROMPT;
     const template: ExtractionPreset = {
       id: `custom-${Date.now()}`,
       name,
       icon: '📄',
-      description: newDescription.trim() || '自定义模板',
       prompt,
     };
     updateSettings({
@@ -139,7 +136,6 @@ export function PresetModal({ visible, onClose }: Props) {
                       <Text style={[styles.rowName, selected && styles.rowNameActive]}>
                         {preset.name}
                       </Text>
-                      <Text style={styles.rowDesc}>{preset.description}</Text>
                     </View>
                     {confirmingDelete ? (
                       <View style={styles.deleteConfirm}>
@@ -236,23 +232,17 @@ export function PresetModal({ visible, onClose }: Props) {
                   autoFocus
                 />
                 <TextInput
-                  value={newDescription}
-                  onChangeText={setNewDescription}
-                  style={styles.editInput}
-                  placeholder="说明(可选)"
-                  placeholderTextColor="#9CA3AF"
-                  maxLength={40}
-                />
-                <TextInput
                   value={newPrompt}
                   onChangeText={setNewPrompt}
                   style={[styles.editInput, styles.promptInput]}
-                  placeholder="提取规则,例如:从图片中提取所有会议安排,备注写地点"
+                  placeholder="提取规则(可选),例如:从图片中提取所有会议安排,备注写地点"
                   placeholderTextColor="#9CA3AF"
                   multiline
                   textAlignVertical="top"
                 />
-                <Text style={styles.promptHint}>JSON 输出格式会自动补充</Text>
+                <Text style={styles.promptHint}>
+                  无特殊要求可以不填,AI 会自己为你规划;JSON 输出格式会自动补充
+                </Text>
                 {formError ? <Text style={styles.formError}>{formError}</Text> : null}
                 <View style={styles.editActions}>
                   <Pressable
@@ -355,11 +345,6 @@ const styles = StyleSheet.create({
   },
   rowNameActive: {
     color: ACCENT,
-  },
-  rowDesc: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 16,
   },
   iconButton: {
     padding: 2,

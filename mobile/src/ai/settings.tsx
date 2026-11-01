@@ -81,7 +81,6 @@ function parseTemplates(value: unknown): ExtractionPreset[] | null {
       id: raw.id,
       name: raw.name,
       icon: typeof raw.icon === 'string' && raw.icon ? raw.icon : '📄',
-      description: typeof raw.description === 'string' ? raw.description : '',
       prompt: raw.prompt,
     });
   }
