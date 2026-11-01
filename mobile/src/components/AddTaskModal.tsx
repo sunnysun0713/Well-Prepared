@@ -133,6 +133,9 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
               <Text style={styles.reminderButtonHint}>设置时间</Text>
             </Pressable>
           </View>
+          {NOTIFICATIONS_SUPPORTED && (
+            <Text style={styles.reminderHint}>提醒由系统闹钟触发,划掉(清理)应用会取消提醒</Text>
+          )}
           {!NOTIFICATIONS_SUPPORTED && (
             <Text style={styles.reminderHint}>提醒仅在手机上生效,浏览器预览不支持</Text>
           )}
