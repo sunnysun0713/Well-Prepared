@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { reminderLabel } from '@/data/reminder-options';
 import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import { dateKeyOf, type Task } from '@/data/tasks';
@@ -29,6 +38,9 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
   const [remind, setRemind] = useState<number | null>(null);
   const [remindSound, setRemindSound] = useState(DEFAULT_REMINDER_SOUND);
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [smsRemind, setSmsRemind] = useState<number | null>(null);
+  const [smsRemindSound, setSmsRemindSound] = useState(DEFAULT_REMINDER_SOUND);
+  const [smsReminderOpen, setSmsReminderOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,6 +55,9 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       setRemind(null);
       setRemindSound(DEFAULT_REMINDER_SOUND);
       setReminderOpen(false);
+      setSmsRemind(null);
+      setSmsRemindSound(DEFAULT_REMINDER_SOUND);
+      setSmsReminderOpen(false);
       setTimeOpen(false);
       setError('');
     }
@@ -59,7 +74,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       return;
     }
     // 设置提醒前确认通知权限,避免"设了却不响"
-    if (remind != null && NOTIFICATIONS_SUPPORTED) {
+    if ((remind != null || smsRemind != null) && NOTIFICATIONS_SUPPORTED) {
       const granted = await ensureNotificationPermission();
       if (!granted) {
         setError('通知权限被拒绝,提醒不会生效;请开启权限或关闭提醒后再添加');
@@ -74,6 +89,8 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       note: note.trim() || undefined,
       remindAdvanceMinutes: remind ?? undefined,
       remindSound: remind != null ? remindSound : undefined,
+      smsRemindAdvanceMinutes: smsRemind ?? undefined,
+      smsRemindSound: smsRemind != null ? smsRemindSound : undefined,
     };
     addTask(date, task);
     onClose();
@@ -85,6 +102,11 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>新增任务</Text>
 
+          <ScrollView
+            style={styles.body}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           <Text style={styles.label}>任务名</Text>
           <TextInput
             value={title}
@@ -133,6 +155,27 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
               <Text style={styles.reminderButtonHint}>设置时间</Text>
             </Pressable>
           </View>
+
+          <Text style={styles.label}>短信提醒</Text>
+          <View style={styles.reminderRow}>
+            <Switch
+              value={smsRemind != null}
+              onValueChange={(on) => setSmsRemind(on ? (smsRemind ?? 10) : null)}
+              trackColor={{ false: '#D1D5DB', true: '#C7D2FE' }}
+              thumbColor={smsRemind != null ? ACCENT : '#F3F4F6'}
+            />
+            <Pressable
+              style={[styles.reminderButton, smsRemind == null && styles.reminderButtonDisabled]}
+              disabled={smsRemind == null}
+              onPress={() => setSmsReminderOpen(true)}
+            >
+              <Text style={styles.reminderButtonText}>
+                {smsRemind != null ? reminderLabel(smsRemind) : '未开启'}
+              </Text>
+              <Text style={styles.reminderButtonHint}>设置时间</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.reminderHint}>到时单独弹出一条「短信提醒」消息,时间可与闹钟不同</Text>
           {NOTIFICATIONS_SUPPORTED && (
             <Text style={styles.reminderHint}>提醒由系统闹钟触发,划掉(清理)应用会取消提醒</Text>
           )}
@@ -150,6 +193,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
               <Text style={styles.confirmText}>添加</Text>
             </Pressable>
           </View>
+          </ScrollView>
         </Pressable>
       </Pressable>
 
@@ -177,6 +221,18 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
         sound={remindSound}
         onSelectSound={setRemindSound}
       />
+
+      <ReminderTimeModal
+        visible={smsReminderOpen}
+        value={smsRemind}
+        onClose={() => setSmsReminderOpen(false)}
+        onSelect={setSmsRemind}
+        onDeleted={(minutes) => {
+          if (smsRemind === minutes) setSmsRemind(10);
+        }}
+        sound={smsRemindSound}
+        onSelectSound={setSmsRemindSound}
+      />
     </Modal>
   );
 }
@@ -190,10 +246,14 @@ const styles = StyleSheet.create({
   },
   card: {
     width: 320,
+    maxHeight: '92%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingVertical: 20,
     paddingHorizontal: 20,
+  },
+  body: {
+    flexGrow: 0,
   },
   title: {
     fontSize: 16,

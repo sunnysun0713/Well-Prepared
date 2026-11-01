@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -150,6 +151,11 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
           <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>任务设置</Text>
 
+            <ScrollView
+              style={styles.body}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             {/* 第 1 行:任务名(改名) */}
             <Text style={styles.label}>任务名</Text>
             <TextInput
@@ -280,6 +286,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
                 <Text style={styles.deleteText}>删除任务</Text>
               </Pressable>
             )}
+            </ScrollView>
           </Pressable>
         </Pressable>
       </KeyboardAvoidingView>
@@ -333,11 +340,15 @@ const styles = StyleSheet.create({
   },
   card: {
     width: 300,
+    maxHeight: '92%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingTop: 14,
     paddingHorizontal: 16,
     paddingBottom: 12,
+  },
+  body: {
+    flexGrow: 0,
   },
   modalTitle: {
     fontSize: 15,
