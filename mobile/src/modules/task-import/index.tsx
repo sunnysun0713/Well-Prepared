@@ -7,9 +7,11 @@ import { getPreset, presetDisplayName } from '@/ai/presets';
 import { getProvider } from '@/ai/providers';
 import { useAiSettings } from '@/ai/settings';
 import type { ExtractedTask } from '@/ai/types';
+import { reminderLabel } from '@/data/reminder-options';
 import { useTasks } from '@/data/tasks-context';
 import { AiSettingsModal } from './ai-settings-modal';
 import { ImportConfirmModal } from './import-confirm-modal';
+import { ImportReminderModal } from './import-reminder-modal';
 import { PresetModal } from './preset-modal';
 
 const ACCENT = '#4F46E5';
@@ -39,8 +41,10 @@ export function TaskImportScreen() {
   const [resultOpen, setResultOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
   const preset = getPreset(settings.presetId);
   const presetName = presetDisplayName(preset, settings.presetNames);
+  const importReminder = settings.importReminderMinutes;
 
   /** 从相册选图:图库在安卓/Web 无需权限,iOS 由系统弹窗处理 */
   const pickFromLibrary = async () => {
@@ -110,11 +114,28 @@ export function TaskImportScreen() {
       <View style={styles.header}>
         {/* 第一行:左上角预设选择器 + 右上角设置 */}
         <View style={styles.topRow}>
-          <Pressable style={styles.presetChip} onPress={() => setPresetOpen(true)} hitSlop={4}>
-            <Text style={styles.presetChipText} numberOfLines={1}>
-              {preset.icon} {presetName} ▾
-            </Text>
-          </Pressable>
+          <View style={styles.topLeft}>
+            <Pressable style={styles.presetChip} onPress={() => setPresetOpen(true)} hitSlop={4}>
+              <Text style={styles.presetChipText} numberOfLines={1}>
+                {preset.icon} {presetName} ▾
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.reminderChip, importReminder != null && styles.reminderChipOn]}
+              onPress={() => setReminderOpen(true)}
+              hitSlop={4}
+            >
+              <Text
+                style={[
+                  styles.reminderChipText,
+                  importReminder != null && styles.reminderChipTextOn,
+                ]}
+                numberOfLines={1}
+              >
+                ⏰ {importReminder != null ? reminderLabel(importReminder) : '闹钟关'}
+              </Text>
+            </Pressable>
+          </View>
           <Pressable style={styles.gearButton} onPress={() => setSettingsOpen(true)} hitSlop={8}>
             <Text style={styles.gearText}>⚙️</Text>
           </Pressable>
@@ -193,6 +214,10 @@ export function TaskImportScreen() {
       />
       <AiSettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <PresetModal visible={presetOpen} onClose={() => setPresetOpen(false)} />
+      <ImportReminderModal
+        visible={reminderOpen}
+        onClose={() => setReminderOpen(false)}
+      />
     </View>
   );
 }
@@ -210,10 +235,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
+  },
+  topLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
   },
   presetChip: {
     height: 28,
-    maxWidth: '72%',
+    maxWidth: '60%',
     borderRadius: 14,
     paddingHorizontal: 10,
     backgroundColor: '#EEF2FF',
@@ -227,6 +259,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: ACCENT,
+  },
+  reminderChip: {
+    height: 28,
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 1,
+  },
+  reminderChipOn: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  reminderChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  reminderChipTextOn: {
+    color: '#B45309',
   },
   titleRow: {
     flexDirection: 'row',
