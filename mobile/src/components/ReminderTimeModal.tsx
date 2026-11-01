@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 34,
+    height: 44,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
@@ -312,8 +312,8 @@ const styles = StyleSheet.create({
   },
   addButton: {
     width: 58,
-    height: 34,
-    borderRadius: 17,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
