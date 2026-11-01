@@ -191,44 +191,46 @@ export function TaskImportScreen() {
         </View>
       </View>
 
-      {/* 提示信息:显示在中间区域上方,避免被底部按键/键盘遮挡 */}
-      {error || importNote ? (
-        <View style={styles.noticesTop}>
-          {importNote ? (
-            <View style={[styles.notice, styles.noticeSuccess]}>
-              <Ionicons name="checkmark-done-outline" size={15} color={colors.success} />
-              <Text style={[styles.noticeText, { color: colors.success }]}>{importNote}</Text>
-            </View>
-          ) : null}
-          {error ? (
-            <View style={[styles.notice, styles.noticeError]} accessibilityRole="alert">
-              <Ionicons name="alert-circle-outline" size={15} color={colors.danger} />
-              <Text style={[styles.noticeText, { color: colors.danger }]}>{error}</Text>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
-      {image ? (
-        <View style={styles.previewWrap}>
-          <Image source={{ uri: image.uri }} style={styles.preview} resizeMode="contain" />
-        </View>
-      ) : (
-        <Pressable
-          style={({ pressed }) => [styles.dropZone, pressed && styles.dropZonePressed]}
-          onPress={pickFromLibrary}
-          accessibilityRole="button"
-          accessibilityLabel="从相册选择图片"
-        >
-          <View style={styles.dropIconWrap}>
-            <Ionicons name="scan-outline" size={34} color={colors.primary} />
+      {/* 中间区域:选图/预览;提示浮动在其上方(绝对定位覆盖,不挤压布局) */}
+      <View style={styles.middle}>
+        {error || importNote ? (
+          <View style={styles.noticesTop} pointerEvents="none">
+            {importNote ? (
+              <View style={[styles.notice, styles.noticeSuccess]}>
+                <Ionicons name="checkmark-done-outline" size={15} color={colors.success} />
+                <Text style={[styles.noticeText, { color: colors.success }]}>{importNote}</Text>
+              </View>
+            ) : null}
+            {error ? (
+              <View style={[styles.notice, styles.noticeError]} accessibilityRole="alert">
+                <Ionicons name="alert-circle-outline" size={15} color={colors.danger} />
+                <Text style={[styles.noticeText, { color: colors.danger }]}>{error}</Text>
+              </View>
+            ) : null}
           </View>
-          <Text style={styles.dropTitle}>选择图片或拍照</Text>
-          <Text style={styles.dropDesc}>
-            课程表、通知截图、手写日程……{'\n'}AI 帮你提取成一条条任务
-          </Text>
-        </Pressable>
-      )}
+        ) : null}
+
+        {image ? (
+          <View style={styles.previewWrap}>
+            <Image source={{ uri: image.uri }} style={styles.preview} resizeMode="contain" />
+          </View>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [styles.dropZone, pressed && styles.dropZonePressed]}
+            onPress={pickFromLibrary}
+            accessibilityRole="button"
+            accessibilityLabel="从相册选择图片"
+          >
+            <View style={styles.dropIconWrap}>
+              <Ionicons name="scan-outline" size={34} color={colors.primary} />
+            </View>
+            <Text style={styles.dropTitle}>选择图片或拍照</Text>
+            <Text style={styles.dropDesc}>
+              课程表、通知截图、手写日程……{'\n'}AI 帮你提取成一条条任务
+            </Text>
+          </Pressable>
+        )}
+      </View>
 
       <View style={styles.actions}>
         <Pressable
@@ -397,9 +399,12 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
-  dropZone: {
+  middle: {
     flex: 1,
     marginTop: 16,
+  },
+  dropZone: {
+    flex: 1,
     borderRadius: radius.xl,
     borderWidth: 1.5,
     borderStyle: 'dashed',
@@ -435,7 +440,6 @@ const styles = StyleSheet.create({
   },
   previewWrap: {
     flex: 1,
-    marginTop: 16,
     borderRadius: radius.xl,
     overflow: 'hidden',
     backgroundColor: colors.surface,
@@ -491,7 +495,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   noticesTop: {
-    marginTop: 12,
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: 8,
+    zIndex: 2,
     gap: 6,
   },
   hint: {
@@ -506,6 +514,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    ...shadow.card,
   },
   noticeSuccess: {
     backgroundColor: colors.successSoft,
