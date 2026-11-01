@@ -37,6 +37,8 @@ const ReminderOptionsContext = createContext<ReminderOptionsContextValue | null>
 export function ReminderOptionsProvider({ children }: { children: ReactNode }) {
   const [customOptions, setCustomOptions] = useState<number[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  // 读取成功才允许回写;读取失败(非损坏)时禁止写,避免用空数据覆盖仍有内容的存档
+  const [persistable, setPersistable] = useState(false);
 
   // 启动时读取自定义档位
   useEffect(() => {
@@ -44,18 +46,21 @@ export function ReminderOptionsProvider({ children }: { children: ReactNode }) {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (!cancelled && raw) {
-          const parsed = JSON.parse(raw) as unknown;
-          if (Array.isArray(parsed)) {
-            setCustomOptions(
-              parsed.filter(
+        if (!cancelled) {
+          setPersistable(true);
+          if (raw) {
+            const parsed = JSON.parse(raw) as unknown;
+            if (Array.isArray(parsed)) {
+              const stored = parsed.filter(
                 (n): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 0,
-              ),
-            );
+              );
+              // 与水合前用户已添加的档位合并,避免覆盖
+              setCustomOptions((prev) => [...new Set([...prev, ...stored])]);
+            }
           }
         }
       } catch {
-        // 存档损坏时只保留内置档位
+        // 读取失败:不启用回写,避免覆盖存档
       }
       if (!cancelled) setHydrated(true);
     })();
@@ -66,11 +71,11 @@ export function ReminderOptionsProvider({ children }: { children: ReactNode }) {
 
   // 自定义档位变化时保存
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !persistable) return;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(customOptions)).catch(() => {
       // 保存失败不影响本次使用
     });
-  }, [hydrated, customOptions]);
+  }, [hydrated, persistable, customOptions]);
 
   const options = useMemo(() => {
     const all = new Set<number>([...PRESET_REMINDER_MINUTES, ...customOptions]);
