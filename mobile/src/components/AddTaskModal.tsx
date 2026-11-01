@@ -31,7 +31,7 @@ interface Props {
 
 /** 新增/编辑任务弹窗:任务名 / 备注 / 时间 / 闹钟提醒 / 短信提醒 */
 export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
-  const { addTask, updateTask } = useTasks();
+  const { addTask, updateTask, deleteTask } = useTasks();
   const [prevVisible, setPrevVisible] = useState(visible);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -45,6 +45,7 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
   const [smsReminderOpen, setSmsReminderOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // 打开弹窗时重置表单:编辑模式预填任务当前值,新增模式用默认值(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
@@ -62,6 +63,7 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
       setSmsReminderOpen(false);
       setTimeOpen(false);
       setError('');
+      setConfirmDelete(false);
     }
   }
 
@@ -79,7 +81,9 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
     if ((remind != null || smsRemind != null) && NOTIFICATIONS_SUPPORTED) {
       const granted = await ensureNotificationPermission();
       if (!granted) {
-        setError('通知权限被拒绝,提醒不会生效;请开启权限或关闭提醒后再添加');
+        setError(
+          `通知权限被拒绝,提醒不会生效;请开启权限或关闭提醒后再${editTask ? '保存' : '添加'}`,
+        );
         return;
       }
     }
@@ -204,6 +208,38 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
               <Text style={styles.confirmText}>{editTask ? '保存' : '添加'}</Text>
             </Pressable>
           </View>
+
+          {/* 删除入口:仅编辑模式,两步确认避免误删 */}
+          {editTask ? (
+            confirmDelete ? (
+              <View style={styles.deleteConfirm}>
+                <Text style={styles.deleteConfirmText}>
+                  确定删除「{editTask.title}」？不可恢复
+                </Text>
+                <View style={styles.deleteConfirmActions}>
+                  <Pressable
+                    style={styles.deleteCancelButton}
+                    onPress={() => setConfirmDelete(false)}
+                  >
+                    <Text style={styles.deleteCancelText}>取消</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.deleteDangerButton}
+                    onPress={() => {
+                      deleteTask(editTask.id);
+                      onClose();
+                    }}
+                  >
+                    <Text style={styles.deleteDangerText}>删除</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <Pressable style={styles.deleteButton} onPress={() => setConfirmDelete(true)}>
+                <Text style={styles.deleteText}>删除任务</Text>
+              </Pressable>
+            )
+          ) : null}
           </ScrollView>
         </Pressable>
       </Pressable>
@@ -376,6 +412,61 @@ const styles = StyleSheet.create({
   confirmText: {
     fontSize: 15,
     fontWeight: '500',
+    color: '#FFFFFF',
+  },
+  deleteButton: {
+    marginTop: 10,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#DC2626',
+  },
+  deleteConfirm: {
+    marginTop: 10,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    gap: 8,
+  },
+  deleteConfirmText: {
+    fontSize: 12,
+    color: '#B91C1C',
+    textAlign: 'center',
+  },
+  deleteConfirmActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  deleteCancelButton: {
+    flex: 1,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteCancelText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  deleteDangerButton: {
+    flex: 1,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteDangerText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
 });
