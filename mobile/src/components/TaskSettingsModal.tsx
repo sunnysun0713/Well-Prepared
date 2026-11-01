@@ -289,7 +289,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: '#F5F6FA',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -298,6 +298,8 @@ const styles = StyleSheet.create({
     maxHeight: '92%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#D1D5DB',
     paddingTop: 14,
     paddingHorizontal: 16,
     paddingBottom: 12,
