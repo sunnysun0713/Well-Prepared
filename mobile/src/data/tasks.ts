@@ -10,6 +10,8 @@ export interface Task {
   note?: string;
   /** 提前提醒的分钟数;未设置表示无提醒 */
   remindAdvanceMinutes?: number;
+  /** 短信提醒的提前分钟数,独立于闹钟提醒;未设置表示未开启 */
+  smsRemindAdvanceMinutes?: number;
   /** 是否收藏(紧急任务);收藏后每日任务顶部显示数量 */
   favorite?: boolean;
 }

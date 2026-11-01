@@ -57,46 +57,78 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 
 /** 通知标识:与任务 id 绑定,便于更新/删除时按同一 id 取消重排 */
 const identifierOf = (taskId: string) => `task-${taskId}`;
+/** 短信提醒使用独立标识,与闹钟互不影响 */
+const smsIdentifierOf = (taskId: string) => `task-${taskId}-sms`;
 
-/**
- * 同步一条任务的提醒:先取消旧排程,再按当前设置重新排程。
- * 无提醒、无起始时间或触发时间已过 → 只取消不排程。
- */
-export async function syncTaskReminder(dateKey: string, task: Task): Promise<void> {
-  if (!NOTIFICATIONS_SUPPORTED) return;
-  const identifier = identifierOf(task.id);
-  try {
-    await Notifications.cancelScheduledNotificationAsync(identifier);
-  } catch {
-    // 不存在该 id 的排程时取消会失败,忽略
-  }
-  if (task.remindAdvanceMinutes == null) return;
+/** 按提前分钟数排程一条通知;分钟数无效、无起始时间或已过触发时间时跳过 */
+async function scheduleTaskNotification(params: {
+  identifier: string;
+  title: string;
+  minutes: number;
+  task: Task;
+  dateKey: string;
+}): Promise<void> {
+  const { identifier, title, minutes, task, dateKey } = params;
   if (!task.startTime) return;
 
   const [y, m, d] = dateKey.split('-').map(Number);
   const [hh, mm] = task.startTime.split(':').map(Number);
   if ([y, m, d, hh, mm].some((n) => Number.isNaN(n))) return;
   const fireAt = new Date(y, m - 1, d, hh, mm, 0, 0);
-  fireAt.setMinutes(fireAt.getMinutes() - task.remindAdvanceMinutes);
+  fireAt.setMinutes(fireAt.getMinutes() - minutes);
   if (fireAt.getTime() <= Date.now()) return;
 
+  await ensureNotificationChannel();
+  const granted = await ensureNotificationPermission();
+  if (!granted) return;
+  await Notifications.scheduleNotificationAsync({
+    identifier,
+    content: {
+      title,
+      body: `${task.title} · ${task.startTime} 开始`,
+      data: { taskId: task.id, dateKey },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: fireAt,
+      channelId: CHANNEL_ID,
+    },
+  });
+}
+
+/**
+ * 同步一条任务的提醒:先取消旧排程,再按当前设置重新排程。
+ * 闹钟与短信提醒各自独立,时间可以不同。
+ */
+export async function syncTaskReminder(dateKey: string, task: Task): Promise<void> {
+  if (!NOTIFICATIONS_SUPPORTED) return;
+  for (const identifier of [identifierOf(task.id), smsIdentifierOf(task.id)]) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } catch {
+      // 不存在该 id 的排程时取消会失败,忽略
+    }
+  }
+
   try {
-    await ensureNotificationChannel();
-    const granted = await ensureNotificationPermission();
-    if (!granted) return;
-    await Notifications.scheduleNotificationAsync({
-      identifier,
-      content: {
+    if (task.remindAdvanceMinutes != null) {
+      await scheduleTaskNotification({
+        identifier: identifierOf(task.id),
         title: '任务提醒',
-        body: `${task.title} · ${task.startTime} 开始`,
-        data: { taskId: task.id, dateKey },
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: fireAt,
-        channelId: CHANNEL_ID,
-      },
-    });
+        minutes: task.remindAdvanceMinutes,
+        task,
+        dateKey,
+      });
+    }
+    if (task.smsRemindAdvanceMinutes != null) {
+      await scheduleTaskNotification({
+        identifier: smsIdentifierOf(task.id),
+        title: '短信提醒',
+        minutes: task.smsRemindAdvanceMinutes,
+        task,
+        dateKey,
+      });
+    }
   } catch {
     // 排程失败不影响任务本身的使用
   }
@@ -105,9 +137,11 @@ export async function syncTaskReminder(dateKey: string, task: Task): Promise<voi
 /** 取消一条任务已排程的提醒(任务删除或关闭提醒时调用) */
 export async function cancelTaskReminder(taskId: string): Promise<void> {
   if (!NOTIFICATIONS_SUPPORTED) return;
-  try {
-    await Notifications.cancelScheduledNotificationAsync(identifierOf(taskId));
-  } catch {
-    // 无排程时忽略
+  for (const identifier of [identifierOf(taskId), smsIdentifierOf(taskId)]) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(identifier);
+    } catch {
+      // 无排程时忽略
+    }
   }
 }

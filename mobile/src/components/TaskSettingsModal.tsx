@@ -36,10 +36,14 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const [endTime, setEndTime] = useState(task.endTime);
   const [note, setNote] = useState(task.note ?? '');
   const [remind, setRemind] = useState<number | null>(task.remindAdvanceMinutes ?? null);
+  const [smsRemind, setSmsRemind] = useState<number | null>(
+    task.smsRemindAdvanceMinutes ?? null,
+  );
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [smsReminderOpen, setSmsReminderOpen] = useState(false);
 
   // 打开弹窗时重置为任务当前值(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
@@ -50,10 +54,12 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       setEndTime(task.endTime);
       setNote(task.note ?? '');
       setRemind(task.remindAdvanceMinutes ?? null);
+      setSmsRemind(task.smsRemindAdvanceMinutes ?? null);
       setError('');
       setConfirmDelete(false);
       setTimeOpen(false);
       setReminderOpen(false);
+      setSmsReminderOpen(false);
     }
   }
 
@@ -68,7 +74,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       return;
     }
     // 设置提醒前确认通知权限,避免"设了却不响"
-    if (remind != null && NOTIFICATIONS_SUPPORTED) {
+    if ((remind != null || smsRemind != null) && NOTIFICATIONS_SUPPORTED) {
       const granted = await ensureNotificationPermission();
       if (!granted) {
         setError('通知权限被拒绝,提醒不会生效;请开启权限或关闭提醒后再保存');
@@ -81,6 +87,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       endTime,
       note: note.trim() ? note.trim() : undefined,
       remindAdvanceMinutes: remind ?? undefined,
+      smsRemindAdvanceMinutes: smsRemind ?? undefined,
     });
     onClose();
   };
@@ -147,6 +154,33 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
               </Pressable>
             </View>
 
+            {/* 第 5 行:短信提醒,时间独立于闹钟 */}
+            <Text style={styles.label}>短信提醒</Text>
+            <View style={styles.reminderRow}>
+              <Switch
+                value={smsRemind != null}
+                onValueChange={(on) => setSmsRemind(on ? (smsRemind ?? 10) : null)}
+                trackColor={{ false: '#D1D5DB', true: '#C7D2FE' }}
+                thumbColor={smsRemind != null ? ACCENT : '#F3F4F6'}
+              />
+              <Pressable
+                style={[
+                  styles.reminderButton,
+                  smsRemind == null && styles.reminderButtonDisabled,
+                ]}
+                disabled={smsRemind == null}
+                onPress={() => setSmsReminderOpen(true)}
+              >
+                <Text style={styles.reminderButtonText}>
+                  {smsRemind != null ? reminderLabel(smsRemind) : '未开启'}
+                </Text>
+                <Text style={styles.reminderButtonHint}>设置时间</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.smsHint}>
+              到时单独弹出一条「短信提醒」消息,时间可与闹钟不同
+            </Text>
+
             {!NOTIFICATIONS_SUPPORTED && (
               <Text style={styles.reminderHint}>提醒仅在手机上生效,浏览器预览不支持</Text>
             )}
@@ -212,6 +246,16 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
         onSelect={setRemind}
         onDeleted={(minutes) => {
           if (remind === minutes) setRemind(10);
+        }}
+      />
+
+      <ReminderTimeModal
+        visible={smsReminderOpen}
+        value={smsRemind}
+        onClose={() => setSmsReminderOpen(false)}
+        onSelect={setSmsRemind}
+        onDeleted={(minutes) => {
+          if (smsRemind === minutes) setSmsRemind(10);
         }}
       />
     </Modal>
@@ -306,6 +350,11 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   reminderHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 6,
+  },
+  smsHint: {
     fontSize: 11,
     color: '#9CA3AF',
     marginTop: 6,

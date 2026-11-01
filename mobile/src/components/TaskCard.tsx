@@ -36,6 +36,7 @@ export function TaskCard({ task, past }: Props) {
       </View>
 
       {task.remindAdvanceMinutes != null && <Text style={styles.bell}>🔔</Text>}
+      {task.smsRemindAdvanceMinutes != null && <Text style={styles.smsBell}>✉️</Text>}
       <Pressable onPress={() => setSettingsOpen(true)} hitSlop={8}>
         <Text style={styles.gear}>⚙️</Text>
       </Pressable>
@@ -119,6 +120,9 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   bell: {
+    fontSize: 14,
+  },
+  smsBell: {
     fontSize: 14,
   },
   gear: {
