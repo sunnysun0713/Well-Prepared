@@ -1,14 +1,34 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
   type ScrollViewInstance,
 } from 'react-native';
+
+interface WheelItemProps {
+  option: string;
+  active: boolean;
+  itemHeight: number;
+  onPress: () => void;
+}
+
+/** 单项:仅选中态或高度变化时重渲染;滚动期间其余项全部跳过 */
+const WheelItem = memo(function WheelItem({
+  option,
+  active,
+  itemHeight,
+  onPress,
+}: WheelItemProps) {
+  return (
+    <Pressable onPress={onPress} style={[styles.item, { height: itemHeight }]}>
+      <Text style={[styles.itemText, active && styles.itemTextActive]}>{option}</Text>
+    </Pressable>
+  );
+});
 
 interface Props {
   options: string[];
@@ -37,6 +57,7 @@ export function WheelPicker({
   const [selected, setSelected] = useState(value);
   const dragging = useRef(false);
   const lastOffset = useRef(value * itemHeight);
+  const lastSelected = useRef(value);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(false);
 
@@ -48,57 +69,74 @@ export function WheelPicker({
     }
   }, [value, itemHeight]);
 
-  const clearTimer = () => {
+  const clearTimer = useCallback(() => {
     if (settleTimer.current) {
       clearTimeout(settleTimer.current);
       settleTimer.current = null;
     }
-  };
+  }, []);
 
-  const scrollToIndex = (i: number, animated = true) => {
-    scrollRef.current?.scrollTo({ y: i * itemHeight, animated });
-  };
+  const scrollToIndex = useCallback(
+    (i: number, animated = true) => {
+      scrollRef.current?.scrollTo({ y: i * itemHeight, animated });
+    },
+    [itemHeight],
+  );
 
   /** 当前偏移对应的选项下标(夹在有效范围) */
-  const indexAt = (offsetY: number) =>
-    Math.max(0, Math.min(options.length - 1, Math.round(offsetY / itemHeight)));
+  const indexAt = useCallback(
+    (offsetY: number) =>
+      Math.max(0, Math.min(options.length - 1, Math.round(offsetY / itemHeight))),
+    [options.length, itemHeight],
+  );
 
-  /** 滚动中:实时选中经过中心阴影的项 */
-  const track = (offsetY: number) => {
-    lastOffset.current = offsetY;
-    const i = indexAt(offsetY);
-    setSelected(i);
-    onChange(i);
-  };
+  /** 仅在下标真正变化时更新状态与父组件,避免逐帧无效渲染 */
+  const applyIndex = useCallback(
+    (i: number) => {
+      if (i !== lastSelected.current) {
+        lastSelected.current = i;
+        setSelected(i);
+        onChange(i);
+      }
+    },
+    [onChange],
+  );
 
   /** 滚动停止后:校正到精确位置,避免两项各占一半卡在阴影里 */
-  const settle = (offsetY: number) => {
-    lastOffset.current = offsetY;
-    const i = indexAt(offsetY);
-    if (Math.abs(offsetY - i * itemHeight) > 0.5) {
-      scrollToIndex(i);
-    }
-    setSelected(i);
-    onChange(i);
-  };
+  const settle = useCallback(
+    (offsetY: number) => {
+      lastOffset.current = offsetY;
+      const i = indexAt(offsetY);
+      applyIndex(i);
+      if (Math.abs(offsetY - i * itemHeight) > 0.5) {
+        scrollToIndex(i);
+      }
+    },
+    [applyIndex, indexAt, itemHeight, scrollToIndex],
+  );
 
-  /** 滚动事件停歇 80ms 后兜底吸附(覆盖无 snap 的平台,如 Web) */
-  const scheduleSettle = () => {
+  /** Web 无原生 snap,滚动停歇 80ms 后兜底吸附;原生端靠 snapToInterval 无需定时器 */
+  const scheduleSettle = useCallback(() => {
     clearTimer();
     settleTimer.current = setTimeout(() => {
       if (!dragging.current) {
         settle(lastOffset.current);
       }
     }, 80);
-  };
+  }, [clearTimer, settle]);
 
   /** 直接点选某项 */
-  const pick = (i: number) => {
-    clearTimer();
-    scrollToIndex(i);
-    setSelected(i);
-    onChange(i);
-  };
+  const pick = useCallback(
+    (i: number) => {
+      clearTimer();
+      scrollToIndex(i);
+      applyIndex(i);
+    },
+    [clearTimer, scrollToIndex, applyIndex],
+  );
+
+  // 每个下标一份稳定回调,配合 WheelItem memo 让滚动时未变化的项零重渲染
+  const pressAt = useMemo(() => options.map((_, i) => () => pick(i)), [options, pick]);
 
   return (
     <View style={[styles.window, { width, height: visibleCount * itemHeight }]}>
@@ -118,27 +156,24 @@ export function WheelPicker({
           dragging.current = true;
           clearTimer();
         }}
-        onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-          track(e.nativeEvent.contentOffset.y);
-          scheduleSettle();
+        onScroll={(e) => {
+          lastOffset.current = e.nativeEvent.contentOffset.y;
+          applyIndex(indexAt(lastOffset.current));
+          if (Platform.OS === 'web') scheduleSettle();
         }}
         onScrollEndDrag={() => {
           dragging.current = false;
         }}
-        onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) =>
-          settle(e.nativeEvent.contentOffset.y)
-        }
+        onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.y)}
       >
         {options.map((opt, i) => (
-          <Pressable
+          <WheelItem
             key={opt}
-            onPress={() => pick(i)}
-            style={[styles.item, { height: itemHeight }]}
-          >
-            <Text style={[styles.itemText, i === selected && styles.itemTextActive]}>
-              {opt}
-            </Text>
-          </Pressable>
+            option={opt}
+            active={i === selected}
+            itemHeight={itemHeight}
+            onPress={pressAt[i]}
+          />
         ))}
       </ScrollView>
     </View>
