@@ -1,0 +1,25 @@
+# 本地开发:MySQL(对应华为云 RDS)+ Redis(对应华为云 DCS)
+# 端口避开本机默认 3306/6379,避免与已有服务冲突
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: nezha123
+      MYSQL_DATABASE: nezha
+      MYSQL_USER: nezha
+      MYSQL_PASSWORD: nezha123
+    ports:
+      - '13306:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-pnezha123']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '16379:6379'
+volumes:
+  mysql-data:
