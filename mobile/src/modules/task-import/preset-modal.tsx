@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentProps } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -10,15 +10,138 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { GENERAL_PROMPT, OUTPUT_RULES, type ExtractionPreset } from '@/ai/presets';
 import { useAiSettings } from '@/ai/settings';
+import { colors, radius, shadow } from '@/theme';
 
-const ACCENT = '#4F46E5';
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
 const NAME_MAX_LENGTH = 12;
+const RULES_PLACEHOLDER = '例如:从图片中提取所有会议安排,备注写地点';
+
+/** 内置模板的显示图标;自定义模板统一用文档图标(数据里的 emoji 字段保持不变) */
+const BUILTIN_ICONS: Record<string, IconName> = {
+  general: 'document-text-outline',
+  timetable: 'school-outline',
+  meeting: 'megaphone-outline',
+  handwritten: 'brush-outline',
+};
+
+function iconOf(preset: ExtractionPreset): IconName {
+  return BUILTIN_ICONS[preset.id] ?? 'reader-outline';
+}
 
 /** 编辑模板时只展示用户写的规则部分,隐藏自动追加的 JSON 输出约束 */
 function stripOutputRules(prompt: string): string {
   return prompt.replace(OUTPUT_RULES, '').trim();
+}
+
+const GENERAL_RULES = stripOutputRules(GENERAL_PROMPT);
+
+/** 列表里的规则摘要:通用规则显示友好文案,其余显示规则首行 */
+function rulesSummary(prompt: string): string {
+  const rules = stripOutputRules(prompt);
+  if (!rules || rules === GENERAL_RULES) return '通用规则,AI 自动规划';
+  return rules.split('\n')[0];
+}
+
+/** 用户规则 → 完整提示词:留空用通用规则,未写输出格式时自动追加 JSON 约束 */
+function buildPrompt(rules: string): string {
+  const trimmed = rules.trim();
+  if (!trimmed) return GENERAL_PROMPT;
+  return trimmed.includes('只输出 JSON') ? trimmed : `${trimmed}\n${OUTPUT_RULES}`;
+}
+
+interface EditorProps {
+  title: string;
+  name: string;
+  rules: string;
+  error: string;
+  saveLabel: string;
+  onChangeName: (v: string) => void;
+  onChangeRules: (v: string) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}
+
+/** 模板编辑表单:新增与编辑共用 */
+function TemplateEditor({
+  title,
+  name,
+  rules,
+  error,
+  saveLabel,
+  onChangeName,
+  onChangeRules,
+  onCancel,
+  onSave,
+}: EditorProps) {
+  return (
+    <View style={styles.editor}>
+      <Text style={styles.editorTitle}>{title}</Text>
+
+      <View style={styles.fieldHeader}>
+        <Text style={styles.fieldLabel}>名称</Text>
+        <Text style={styles.counter}>
+          {name.length}/{NAME_MAX_LENGTH}
+        </Text>
+      </View>
+      <TextInput
+        value={name}
+        onChangeText={onChangeName}
+        style={[styles.input, error ? styles.inputError : null]}
+        placeholder="给模板起个名字"
+        placeholderTextColor={colors.textMuted}
+        maxLength={NAME_MAX_LENGTH}
+        autoFocus
+        accessibilityLabel="模板名称"
+      />
+
+      <View style={styles.fieldHeader}>
+        <Text style={styles.fieldLabel}>提取规则</Text>
+        <Text style={styles.optional}>选填</Text>
+      </View>
+      <TextInput
+        value={rules}
+        onChangeText={onChangeRules}
+        style={[styles.input, styles.rulesInput]}
+        placeholder={RULES_PLACEHOLDER}
+        placeholderTextColor={colors.textMuted}
+        multiline
+        textAlignVertical="top"
+        accessibilityLabel="提取规则"
+      />
+      <View style={styles.tipRow}>
+        <Ionicons name="sparkles" size={12} color={colors.primary} />
+        <Text style={styles.tipText}>不填也行,AI 会自己规划;输出格式自动补充</Text>
+      </View>
+
+      {error ? (
+        <View style={styles.tipRow}>
+          <Ionicons name="alert-circle-outline" size={13} color={colors.danger} />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
+      <View style={styles.editorActions}>
+        <Pressable
+          onPress={onCancel}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.ghostButton, pressed && styles.pressed]}
+        >
+          <Text style={styles.ghostText}>取消</Text>
+        </Pressable>
+        <Pressable
+          onPress={onSave}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.primaryButton, pressed && styles.primaryPressed]}
+        >
+          <Text style={styles.primaryText}>{saveLabel}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
 interface Props {
@@ -26,59 +149,90 @@ interface Props {
   onClose: () => void;
 }
 
-/** 模板弹窗:选择/重命名/删除/新增提取模板(内置模板也可删除) */
+/** 模板弹窗:选择/编辑/删除/新增提取模板(内置模板也可删除) */
 export function PresetModal({ visible, onClose }: Props) {
   const { settings, updateSettings } = useAiSettings();
   const templates = settings.templates;
   const [prevVisible, setPrevVisible] = useState(visible);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   const [draftRules, setDraftRules] = useState('');
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newPrompt, setNewPrompt] = useState('');
   const [formError, setFormError] = useState('');
 
   // 打开弹窗时清空编辑状态(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
-      setRenamingId(null);
+      setEditingId(null);
+      setAdding(false);
+      setPendingDeleteId(null);
       setDraftName('');
       setDraftRules('');
-      setPendingDeleteId(null);
-      setAdding(false);
-      setNewName('');
-      setNewPrompt('');
       setFormError('');
     }
   }
 
-  const startRename = (preset: ExtractionPreset) => {
-    setRenamingId(preset.id);
-    setDraftName(preset.name);
-    setDraftRules(stripOutputRules(preset.prompt));
-    setPendingDeleteId(null);
+  const closeForms = () => {
+    setEditingId(null);
+    setAdding(false);
+    setFormError('');
   };
 
-  const saveRename = () => {
-    if (!renamingId) return;
+  const startEdit = (preset: ExtractionPreset) => {
+    setEditingId(preset.id);
+    setAdding(false);
+    setPendingDeleteId(null);
+    setDraftName(preset.name);
+    const rules = stripOutputRules(preset.prompt);
+    // 通用规则不回填,让用户看到的是「留空 = AI 自动规划」
+    setDraftRules(rules === GENERAL_RULES ? '' : rules);
+    setFormError('');
+  };
+
+  const startAdd = () => {
+    setAdding(true);
+    setEditingId(null);
+    setPendingDeleteId(null);
+    setDraftName('');
+    setDraftRules('');
+    setFormError('');
+  };
+
+  const saveEdit = () => {
+    if (!editingId) return;
     const name = draftName.trim().slice(0, NAME_MAX_LENGTH);
-    if (!name) return;
-    const rules = draftRules.trim();
-    const prompt = rules
-      ? rules.includes('只输出 JSON')
-        ? rules
-        : `${rules}\n${OUTPUT_RULES}`
-      : GENERAL_PROMPT;
+    if (!name) {
+      setFormError('请填写模板名称');
+      return;
+    }
+    const prompt = buildPrompt(draftRules);
     updateSettings({
       ...settings,
-      templates: templates.map((t) =>
-        t.id === renamingId ? { ...t, name, prompt } : t,
-      ),
+      templates: templates.map((t) => (t.id === editingId ? { ...t, name, prompt } : t)),
     });
-    setRenamingId(null);
+    closeForms();
+  };
+
+  const saveAdd = () => {
+    const name = draftName.trim().slice(0, NAME_MAX_LENGTH);
+    if (!name) {
+      setFormError('请填写模板名称');
+      return;
+    }
+    const template: ExtractionPreset = {
+      id: `custom-${Date.now()}`,
+      name,
+      icon: '📄',
+      prompt: buildPrompt(draftRules),
+    };
+    updateSettings({
+      ...settings,
+      templates: [...templates, template],
+      presetId: template.id,
+    });
+    closeForms();
   };
 
   const removeTemplate = (id: string) => {
@@ -86,222 +240,209 @@ export function PresetModal({ visible, onClose }: Props) {
     updateSettings({
       ...settings,
       templates: next,
-      presetId:
-        settings.presetId === id ? next[0]?.id ?? '' : settings.presetId,
+      presetId: settings.presetId === id ? (next[0]?.id ?? '') : settings.presetId,
     });
     setPendingDeleteId(null);
+    if (editingId === id) closeForms();
   };
 
-  const addTemplate = () => {
-    const name = newName.trim().slice(0, NAME_MAX_LENGTH);
-    const rules = newPrompt.trim();
-    if (!name) {
-      setFormError('请填写模板名称');
-      return;
-    }
-    // 规则可留空:使用通用提取规则;输出格式约束自动补充,避免模型输出无法解析的内容
-    const prompt = rules
-      ? rules.includes('只输出 JSON')
-        ? rules
-        : `${rules}\n${OUTPUT_RULES}`
-      : GENERAL_PROMPT;
-    const template: ExtractionPreset = {
-      id: `custom-${Date.now()}`,
-      name,
-      icon: '📄',
-      prompt,
-    };
-    updateSettings({
-      ...settings,
-      templates: [...templates, template],
-      presetId: template.id,
-    });
-    setAdding(false);
+  const selectTemplate = (id: string) => {
+    updateSettings({ ...settings, presetId: id });
+    onClose();
   };
 
-  const renamingPreset = renamingId
-    ? templates.find((t) => t.id === renamingId)
-    : undefined;
+  const editorProps = {
+    name: draftName,
+    rules: draftRules,
+    error: formError,
+    onChangeName: (v: string) => {
+      setDraftName(v);
+      if (formError) setFormError('');
+    },
+    onChangeRules: setDraftRules,
+    onCancel: closeForms,
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.backdrop}
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable style={styles.backdrop} onPress={onClose}>
           <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.title}>模板</Text>
-            <Text style={styles.hint}>点模板切换;✏️ 编辑名称与规则,🗑️ 删除,内置模板也可删除</Text>
+            {/* 标题栏 */}
+            <View style={styles.header}>
+              <View style={styles.headerText}>
+                <Text style={styles.title}>提取模板</Text>
+                <Text style={styles.subtitle}>点选模板切换,AI 会按模板规则识别图片</Text>
+              </View>
+              <Pressable
+                onPress={onClose}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="关闭"
+                style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+              >
+                <Ionicons name="close" size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
 
-            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+            <ScrollView
+              style={styles.list}
+              contentContainerStyle={styles.listContent}
+              keyboardShouldPersistTaps="handled"
+            >
               {templates.map((preset) => {
                 const selected = preset.id === settings.presetId;
                 const confirmingDelete = pendingDeleteId === preset.id;
+                const editing = editingId === preset.id;
                 return (
-                  <Pressable
+                  <View
                     key={preset.id}
-                    onPress={() => {
-                      updateSettings({ ...settings, presetId: preset.id });
-                      onClose();
-                    }}
-                    style={[styles.row, selected && styles.rowActive]}
+                    style={[styles.item, selected && styles.itemSelected]}
                   >
-                    <Text style={styles.rowIcon}>{preset.icon}</Text>
-                    <View style={styles.rowBody}>
-                      <Text style={[styles.rowName, selected && styles.rowNameActive]}>
-                        {preset.name}
-                      </Text>
-                    </View>
-                    {confirmingDelete ? (
-                      <View style={styles.deleteConfirm}>
-                        <Pressable
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            setPendingDeleteId(null);
-                          }}
-                          hitSlop={6}
-                        >
-                          <Text style={styles.cancelText}>取消</Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            removeTemplate(preset.id);
-                          }}
-                          hitSlop={6}
-                        >
-                          <Text style={styles.dangerText}>删除</Text>
-                        </Pressable>
+                    <Pressable
+                      onPress={() => selectTemplate(preset.id)}
+                      disabled={editing}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`模板 ${preset.name}`}
+                      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                    >
+                      <View style={[styles.iconWrap, selected && styles.iconWrapSelected]}>
+                        <Ionicons
+                          name={iconOf(preset)}
+                          size={18}
+                          color={selected ? colors.onPrimary : colors.primary}
+                        />
                       </View>
-                    ) : (
-                      <>
-                        <Pressable
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            startRename(preset);
-                          }}
-                          hitSlop={8}
-                          style={styles.iconButton}
+                      <View style={styles.rowBody}>
+                        <Text
+                          style={[styles.rowName, selected && styles.rowNameSelected]}
+                          numberOfLines={1}
                         >
-                          <Text style={styles.renameIcon}>✏️</Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            setPendingDeleteId(preset.id);
-                            setRenamingId(null);
-                          }}
-                          hitSlop={8}
-                          style={styles.iconButton}
-                        >
-                          <Text style={styles.renameIcon}>🗑️</Text>
-                        </Pressable>
-                        {selected && <Text style={styles.check}>✓</Text>}
-                      </>
+                          {preset.name}
+                        </Text>
+                        <Text style={styles.rowDesc} numberOfLines={1}>
+                          {rulesSummary(preset.prompt)}
+                        </Text>
+                      </View>
+
+                      {confirmingDelete ? (
+                        <View style={styles.deleteConfirm}>
+                          <Pressable
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setPendingDeleteId(null);
+                            }}
+                            hitSlop={6}
+                            accessibilityRole="button"
+                            style={({ pressed }) => [styles.smallGhost, pressed && styles.pressed]}
+                          >
+                            <Text style={styles.smallGhostText}>取消</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              removeTemplate(preset.id);
+                            }}
+                            hitSlop={6}
+                            accessibilityRole="button"
+                            accessibilityLabel={`确认删除模板 ${preset.name}`}
+                            style={({ pressed }) => [styles.smallDanger, pressed && styles.pressed]}
+                          >
+                            <Text style={styles.smallDangerText}>删除</Text>
+                          </Pressable>
+                        </View>
+                      ) : (
+                        <View style={styles.rowActions}>
+                          <Pressable
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              if (editing) closeForms();
+                              else startEdit(preset);
+                            }}
+                            hitSlop={6}
+                            accessibilityRole="button"
+                            accessibilityLabel={`编辑模板 ${preset.name}`}
+                            style={({ pressed }) => [
+                              styles.iconButton,
+                              editing && styles.iconButtonActive,
+                              pressed && styles.pressed,
+                            ]}
+                          >
+                            <Ionicons
+                              name="pencil-outline"
+                              size={16}
+                              color={editing ? colors.primary : colors.textMuted}
+                            />
+                          </Pressable>
+                          <Pressable
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setPendingDeleteId(preset.id);
+                              if (editing) closeForms();
+                            }}
+                            hitSlop={6}
+                            accessibilityRole="button"
+                            accessibilityLabel={`删除模板 ${preset.name}`}
+                            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                          >
+                            <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+                          </Pressable>
+                          {selected && (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={20}
+                              color={colors.primary}
+                              style={styles.check}
+                            />
+                          )}
+                        </View>
+                      )}
+                    </Pressable>
+
+                    {editing && (
+                      <TemplateEditor
+                        {...editorProps}
+                        title="编辑模板"
+                        saveLabel="保存"
+                        onSave={saveEdit}
+                      />
                     )}
-                  </Pressable>
+                  </View>
                 );
               })}
-              {templates.length === 0 && (
-                <Text style={styles.empty}>还没有模板,点下方「添加模板」新建</Text>
+
+              {templates.length === 0 && !adding && (
+                <View style={styles.empty}>
+                  <Ionicons name="albums-outline" size={28} color={colors.textMuted} />
+                  <Text style={styles.emptyTitle}>还没有模板</Text>
+                  <Text style={styles.emptyHint}>点下方「添加模板」新建一个</Text>
+                </View>
+              )}
+
+              {adding ? (
+                <View style={[styles.item, styles.itemSelected]}>
+                  <TemplateEditor
+                    {...editorProps}
+                    title="添加模板"
+                    saveLabel="保存模板"
+                    onSave={saveAdd}
+                  />
+                </View>
+              ) : (
+                <Pressable
+                  onPress={startAdd}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+                >
+                  <Ionicons name="add" size={18} color={colors.primary} />
+                  <Text style={styles.addText}>添加模板</Text>
+                </Pressable>
               )}
             </ScrollView>
-
-            {renamingPreset && (
-              <View style={styles.editBox}>
-                <Text style={styles.editLabel}>编辑「{renamingPreset.name}」</Text>
-                <TextInput
-                  value={draftName}
-                  onChangeText={setDraftName}
-                  style={styles.editInput}
-                  placeholder={`模板名称(最多 ${NAME_MAX_LENGTH} 字)`}
-                  placeholderTextColor="#9CA3AF"
-                  maxLength={NAME_MAX_LENGTH}
-                  autoFocus
-                />
-                <TextInput
-                  value={draftRules}
-                  onChangeText={setDraftRules}
-                  style={[styles.editInput, styles.promptInput]}
-                  placeholder="提取规则(可选),例如:从图片中提取所有会议安排,备注写地点"
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  textAlignVertical="top"
-                />
-                <Text style={styles.promptHint}>
-                  无特殊要求可以不填,AI 会自己为你规划;JSON 输出格式会自动补充
-                </Text>
-                <View style={styles.editActions}>
-                  <Pressable
-                    style={styles.editCancel}
-                    onPress={() => setRenamingId(null)}
-                  >
-                    <Text style={styles.editCancelText}>取消</Text>
-                  </Pressable>
-                  <Pressable style={styles.editSave} onPress={saveRename}>
-                    <Text style={styles.editSaveText}>保存</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-
-            {adding && (
-              <View style={styles.editBox}>
-                <Text style={styles.editLabel}>添加模板</Text>
-                <TextInput
-                  value={newName}
-                  onChangeText={setNewName}
-                  style={styles.editInput}
-                  placeholder={`模板名称(最多 ${NAME_MAX_LENGTH} 字)`}
-                  placeholderTextColor="#9CA3AF"
-                  maxLength={NAME_MAX_LENGTH}
-                  autoFocus
-                />
-                <TextInput
-                  value={newPrompt}
-                  onChangeText={setNewPrompt}
-                  style={[styles.editInput, styles.promptInput]}
-                  placeholder="提取规则(可选),例如:从图片中提取所有会议安排,备注写地点"
-                  placeholderTextColor="#9CA3AF"
-                  multiline
-                  textAlignVertical="top"
-                />
-                <Text style={styles.promptHint}>
-                  无特殊要求可以不填,AI 会自己为你规划;JSON 输出格式会自动补充
-                </Text>
-                {formError ? <Text style={styles.formError}>{formError}</Text> : null}
-                <View style={styles.editActions}>
-                  <Pressable
-                    style={styles.editCancel}
-                    onPress={() => setAdding(false)}
-                  >
-                    <Text style={styles.editCancelText}>取消</Text>
-                  </Pressable>
-                  <Pressable style={styles.editSave} onPress={addTemplate}>
-                    <Text style={styles.editSaveText}>保存模板</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
-
-            {!adding && (
-              <Pressable
-                style={styles.addTemplateButton}
-                onPress={() => {
-                  setAdding(true);
-                  setRenamingId(null);
-                  setPendingDeleteId(null);
-                  setFormError('');
-                }}
-              >
-                <Text style={styles.addTemplateText}>＋ 添加模板</Text>
-              </Pressable>
-            )}
-
-            <Pressable style={styles.closeButton} onPress={onClose}>
-              <Text style={styles.closeText}>关闭</Text>
-            </Pressable>
           </Pressable>
         </Pressable>
       </KeyboardAvoidingView>
@@ -310,189 +451,292 @@ export function PresetModal({ visible, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(17, 24, 39, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 20,
   },
   card: {
-    width: 320,
+    width: '100%',
+    maxWidth: 380,
     maxHeight: '88%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    paddingTop: 18,
+    paddingBottom: 12,
+    ...shadow.card,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingHorizontal: 18,
+    marginBottom: 12,
+  },
+  headerText: {
+    flex: 1,
+    gap: 3,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
-    textAlign: 'center',
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
   },
-  hint: {
+  subtitle: {
     fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 10,
+    color: colors.textSecondary,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   list: {
     flexGrow: 0,
   },
   listContent: {
     gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 6,
+  },
+  item: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  itemSelected: {
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.primarySoft,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: 'transparent',
+    gap: 10,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingLeft: 10,
+    paddingRight: 8,
   },
-  rowActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#C7D2FE',
+  rowPressed: {
+    opacity: 0.7,
   },
-  rowIcon: {
-    fontSize: 20,
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrapSelected: {
+    backgroundColor: colors.primary,
   },
   rowBody: {
     flex: 1,
     gap: 2,
   },
   rowName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: colors.text,
   },
-  rowNameActive: {
-    color: ACCENT,
+  rowNameSelected: {
+    color: colors.primary,
+  },
+  rowDesc: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  rowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   iconButton: {
-    padding: 2,
+    width: 32,
+    height: 32,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  renameIcon: {
-    fontSize: 14,
+  iconButtonActive: {
+    backgroundColor: colors.surface,
   },
   check: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: ACCENT,
+    marginLeft: 2,
   },
   deleteConfirm: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 6,
   },
-  cancelText: {
-    fontSize: 12,
-    color: '#6B7280',
+  smallGhost: {
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  dangerText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#DC2626',
-  },
-  empty: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    paddingVertical: 20,
-  },
-  editBox: {
-    marginTop: 10,
-    borderRadius: 12,
-    backgroundColor: '#EEF2FF',
-    padding: 10,
-    gap: 8,
-  },
-  editLabel: {
+  smallGhostText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#4338CA',
+    color: colors.textSecondary,
   },
-  editInput: {
-    height: 34,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-    borderRadius: 8,
-    paddingHorizontal: 10,
+  smallDanger: {
+    height: 28,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smallDangerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.onPrimary,
+  },
+  editor: {
+    margin: 8,
+    marginTop: 0,
+    padding: 12,
+    gap: 6,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.primaryBorder,
+  },
+  editorTitle: {
     fontSize: 13,
-    color: '#1F2937',
-    backgroundColor: '#FFFFFF',
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 2,
   },
-  promptInput: {
-    height: 84,
-    paddingTop: 8,
+  fieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
-  promptHint: {
-    fontSize: 10,
-    color: '#6B7280',
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
-  formError: {
+  counter: {
     fontSize: 11,
-    color: '#DC2626',
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
   },
-  editActions: {
+  optional: {
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  input: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: colors.bg,
+  },
+  inputError: {
+    borderColor: colors.danger,
+  },
+  rulesInput: {
+    height: 96,
+    paddingTop: 10,
+    lineHeight: 20,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.danger,
+  },
+  editorActions: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 6,
   },
-  editCancel: {
+  ghostButton: {
     flex: 1,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editCancelText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  editSave: {
-    flex: 1,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: ACCENT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editSaveText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  addTemplateButton: {
-    marginTop: 10,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addTemplateText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: ACCENT,
-  },
-  closeButton: {
-    marginTop: 10,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: '#F3F4F6',
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeText: {
+  ghostText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: colors.textSecondary,
+  },
+  primaryButton: {
+    flex: 1,
+    height: 38,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryPressed: {
+    backgroundColor: colors.primaryPressed,
+  },
+  primaryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.onPrimary,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 4,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  emptyHint: {
+    fontSize: 12,
+    color: colors.textMuted,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    height: 44,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: colors.primaryBorder,
+  },
+  addText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  pressed: {
+    opacity: 0.55,
   },
 });
