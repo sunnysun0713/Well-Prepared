@@ -4,6 +4,13 @@ import type { VisionProvider } from './types';
 /** 视觉提取服务注册表:新增服务在此登记。提取提示词由模板(见 presets.ts)提供。 */
 export const PROVIDERS: VisionProvider[] = [
   createOpenAICompatProvider({
+    id: 'huawei-maas',
+    label: '华为云 MaaS',
+    baseUrl: 'https://api.modelarts-maas.com/openai/v1/chat/completions',
+    // 模型名以 MaaS 控制台「预置服务」开通后的实际名称为准(如 Qwen2.5-VL-72B)
+    model: 'Qwen2.5-VL-72B',
+  }),
+  createOpenAICompatProvider({
     id: 'deepseek',
     label: 'DeepSeek 视觉',
     baseUrl: 'https://api.deepseek.com/chat/completions',
