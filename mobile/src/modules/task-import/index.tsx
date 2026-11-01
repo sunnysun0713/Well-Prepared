@@ -1,5 +1,13 @@
-import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { extractTasksFromImage } from '@/ai/extract';
@@ -45,6 +53,32 @@ export function TaskImportScreen() {
     settings.templates[0];
   const planOn =
     settings.importReminderMinutes != null || settings.importSmsRemindMinutes != null;
+
+  /** 提示条透明度:出现 5s 后淡出并清空提示(useState 惰性创建,实例跨渲染稳定) */
+  const [noticesOpacity] = useState(() => new Animated.Value(1));
+  useEffect(() => {
+    if (!error && !importNote) {
+      noticesOpacity.setValue(1);
+      return;
+    }
+    noticesOpacity.setValue(1);
+    const timer = setTimeout(() => {
+      Animated.timing(noticesOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setError('');
+          setImportNote('');
+        }
+      });
+    }, 5000);
+    return () => {
+      clearTimeout(timer);
+      noticesOpacity.stopAnimation();
+    };
+  }, [error, importNote, noticesOpacity]);
 
   /** 从相册选图:图库在安卓/Web 无需权限,iOS 由系统弹窗处理 */
   const pickFromLibrary = async () => {
@@ -194,7 +228,10 @@ export function TaskImportScreen() {
       {/* 中间区域:选图/预览;提示浮动在其上方(绝对定位覆盖,不挤压布局) */}
       <View style={styles.middle}>
         {error || importNote ? (
-          <View style={styles.noticesTop} pointerEvents="none">
+          <Animated.View
+            style={[styles.noticesTop, { opacity: noticesOpacity }]}
+            pointerEvents="none"
+          >
             {importNote ? (
               <View style={[styles.notice, styles.noticeSuccess]}>
                 <Ionicons name="checkmark-done-outline" size={15} color={colors.success} />
@@ -207,7 +244,7 @@ export function TaskImportScreen() {
                 <Text style={[styles.noticeText, { color: colors.danger }]}>{error}</Text>
               </View>
             ) : null}
-          </View>
+          </Animated.View>
         ) : null}
 
         {image ? (
