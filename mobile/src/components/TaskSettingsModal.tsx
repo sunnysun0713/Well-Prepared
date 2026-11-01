@@ -14,7 +14,6 @@ import { reminderLabel } from '@/data/reminder-options';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
-import { CategoryPicker } from './CategoryPicker';
 import { ReminderTimeModal } from './ReminderTimeModal';
 import { TimeRangeModal } from './TimeRangeModal';
 
@@ -28,7 +27,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** 任务设置弹窗,功能分行排列:任务名 → 备注 → 时间 → 分类 → 闹钟提醒 */
+/** 任务设置弹窗,功能分行排列:任务名 → 备注 → 时间 → 闹钟提醒 */
 export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const { updateTask, deleteTask } = useTasks();
   const [prevVisible, setPrevVisible] = useState(visible);
@@ -36,7 +35,6 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const [startTime, setStartTime] = useState(task.startTime);
   const [endTime, setEndTime] = useState(task.endTime);
   const [note, setNote] = useState(task.note ?? '');
-  const [categoryId, setCategoryId] = useState<string | undefined>(task.categoryId);
   const [remind, setRemind] = useState<number | null>(task.remindAdvanceMinutes ?? null);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -51,7 +49,6 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       setStartTime(task.startTime);
       setEndTime(task.endTime);
       setNote(task.note ?? '');
-      setCategoryId(task.categoryId);
       setRemind(task.remindAdvanceMinutes ?? null);
       setError('');
       setConfirmDelete(false);
@@ -83,7 +80,6 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       startTime,
       endTime,
       note: note.trim() ? note.trim() : undefined,
-      categoryId,
       remindAdvanceMinutes: remind ?? undefined,
     });
     onClose();
@@ -130,11 +126,7 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
               <Text style={styles.timeButtonHint}>点击设置</Text>
             </Pressable>
 
-            {/* 第 4 行:分类标签(含自定义) */}
-            <Text style={styles.label}>分类</Text>
-            <CategoryPicker value={categoryId} onChange={setCategoryId} />
-
-            {/* 第 5 行:闹钟提醒开关 + 提醒时间 */}
+            {/* 第 4 行:闹钟提醒开关 + 提醒时间 */}
             <Text style={styles.label}>闹钟提醒</Text>
             <View style={styles.reminderRow}>
               <Switch

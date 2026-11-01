@@ -4,7 +4,6 @@ import { reminderLabel } from '@/data/reminder-options';
 import { dateKeyOf, type Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
-import { CategoryPicker } from './CategoryPicker';
 import { ReminderTimeModal } from './ReminderTimeModal';
 import { TimeRangeModal } from './TimeRangeModal';
 
@@ -18,7 +17,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** 新增任务弹窗:任务名 / 备注 / 时间 / 分类 / 闹钟提醒 */
+/** 新增任务弹窗:任务名 / 备注 / 时间 / 闹钟提醒 */
 export function AddTaskModal({ visible, date, onClose }: Props) {
   const { addTask } = useTasks();
   const [prevVisible, setPrevVisible] = useState(visible);
@@ -26,7 +25,6 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
   const [note, setNote] = useState('');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('09:30');
-  const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [remind, setRemind] = useState<number | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
@@ -40,7 +38,6 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       setNote('');
       setStartTime('09:00');
       setEndTime('09:30');
-      setCategoryId(undefined);
       setRemind(null);
       setReminderOpen(false);
       setTimeOpen(false);
@@ -72,7 +69,6 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       startTime,
       endTime,
       note: note.trim() || undefined,
-      categoryId,
       remindAdvanceMinutes: remind ?? undefined,
     };
     addTask(date, task);
@@ -113,9 +109,6 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
             </Text>
             <Text style={styles.timeButtonHint}>点击设置</Text>
           </Pressable>
-
-          <Text style={styles.label}>分类</Text>
-          <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
           <Text style={styles.label}>闹钟提醒</Text>
           <View style={styles.reminderRow}>

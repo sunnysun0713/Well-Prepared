@@ -22,8 +22,7 @@ type Action =
   | { type: 'REPLACE'; state: TasksState }
   | { type: 'ADD_TASK'; dateKey: string; task: Task }
   | { type: 'UPDATE_TASK'; id: string; patch: Partial<Omit<Task, 'id'>> }
-  | { type: 'DELETE_TASK'; id: string }
-  | { type: 'CLEAR_CATEGORY'; categoryId: string };
+  | { type: 'DELETE_TASK'; id: string };
 
 function reducer(state: TasksState, action: Action): TasksState {
   switch (action.type) {
@@ -45,19 +44,6 @@ function reducer(state: TasksState, action: Action): TasksState {
           .map(([key, tasks]) => [key, tasks.filter((t) => t.id !== action.id)] as const)
           .filter(([, tasks]) => tasks.length > 0),
       );
-    case 'CLEAR_CATEGORY':
-      // 删除分类时,把使用该分类的任务改为无标签
-      return Object.fromEntries(
-        Object.entries(state).map(([key, tasks]) => [
-          key,
-          tasks.map((t) => {
-            if (t.categoryId !== action.categoryId) return t;
-            const next = { ...t };
-            delete next.categoryId;
-            return next;
-          }),
-        ]),
-      );
   }
 }
 
@@ -70,8 +56,6 @@ interface TasksContextValue {
   updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>) => void;
   /** 按任务 id 删除 */
   deleteTask: (id: string) => void;
-  /** 删除分类时清除任务上的该分类标记 */
-  clearCategory: (categoryId: string) => void;
 }
 
 const TasksContext = createContext<TasksContextValue | null>(null);
@@ -155,14 +139,9 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     void cancelTaskReminder(id);
   }, []);
 
-  /** 删除分类:清除任务上的标记 */
-  const clearCategory = useCallback((categoryId: string) => {
-    dispatch({ type: 'CLEAR_CATEGORY', categoryId });
-  }, []);
-
   const value = useMemo(
-    () => ({ getTasks, addTask, updateTask, deleteTask, clearCategory }),
-    [getTasks, addTask, updateTask, deleteTask, clearCategory],
+    () => ({ getTasks, addTask, updateTask, deleteTask }),
+    [getTasks, addTask, updateTask, deleteTask],
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

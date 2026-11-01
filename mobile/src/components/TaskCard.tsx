@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { findCategory } from '@/data/categories';
-import { useCategories } from '@/data/categories-context';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { TaskSettingsModal } from './TaskSettingsModal';
@@ -13,43 +11,16 @@ interface Props {
   past: boolean;
 }
 
-/**
- * 任务卡片:时间上下排列 + 标题/备注 + 分类色条。
- * 点击卡片主体时,左侧色条变宽并竖排显示分类名,内容整体右移。
- */
+/** 任务卡片:时间上下排列 + 标题/备注 */
 export function TaskCard({ task, past }: Props) {
   const { updateTask } = useTasks();
-  const { categories } = useCategories();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const category = findCategory(categories, task.categoryId);
   const hasTime = Boolean(task.startTime || task.endTime);
 
   return (
     <View style={[styles.card, past && styles.past]}>
-      {category && (
-        <View
-          style={[
-            styles.categoryBar,
-            expanded && styles.categoryBarExpanded,
-            { backgroundColor: category.color },
-          ]}
-        >
-          {expanded && (
-            <Text style={styles.categoryLabel}>
-              {(category.name.length > 4
-                ? `${category.name.slice(0, 3)}…`
-                : category.name
-              )
-                .split('')
-                .join('\n')}
-            </Text>
-          )}
-        </View>
-      )}
-
-      <View style={[styles.main, expanded && category && styles.mainExpanded]}>
+      <View style={styles.main}>
         {hasTime && (
           <Pressable onPress={() => setTimeOpen(true)} hitSlop={6}>
             <View style={styles.timeCol}>
@@ -58,15 +29,10 @@ export function TaskCard({ task, past }: Props) {
             </View>
           </Pressable>
         )}
-        <Pressable
-          style={styles.body}
-          onPress={() => {
-            if (category) setExpanded((value) => !value);
-          }}
-        >
+        <View style={styles.body}>
           <Text style={styles.title}>{task.title}</Text>
           {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
-        </Pressable>
+        </View>
       </View>
 
       {task.remindAdvanceMinutes != null && <Text style={styles.bell}>🔔</Text>}
@@ -118,36 +84,11 @@ const styles = StyleSheet.create({
   past: {
     opacity: 0.5,
   },
-  categoryBar: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  categoryBarExpanded: {
-    width: 34,
-  },
-  categoryLabel: {
-    fontSize: 11,
-    lineHeight: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
   main: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  mainExpanded: {
-    marginLeft: 30,
   },
   timeCol: {
     minWidth: 48,

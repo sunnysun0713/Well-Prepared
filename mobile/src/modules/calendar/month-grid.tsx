@@ -1,5 +1,4 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { BUSYNESS_LEVEL_COUNT, busynessColorFor } from '@/data/busyness';
 
 const WEEK_HEADERS = ['一', '二', '三', '四', '五', '六', '日'];
 const WEEKEND_COLOR = '#DC2626';
@@ -12,19 +11,19 @@ interface Props {
   today: Date;
   /** 选中的日期(可能在其他月份) */
   selected: Date | null;
-  /** 每日繁忙度等级(0-5),格内圆点按等级取色 */
-  levelsByDay: Record<number, number>;
+  /** 有任务的日号集合,格内显示小圆点 */
+  taskDays: Set<number>;
   /** 点击某一天(传当月日号) */
   onSelectDay: (day: number) => void;
 }
 
-/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,繁忙度用彩色圆点表示 */
+/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,有任务显示圆点 */
 export function MonthGrid({
   year,
   month,
   today,
   selected,
-  levelsByDay,
+  taskDays,
   onSelectDay,
 }: Props) {
   // 周一起始:计算当月 1 日前需要补的空格数
@@ -64,9 +63,6 @@ export function MonthGrid({
         const weekend = i % 7 >= 5;
         const todayCell = day !== null && isToday(day);
         const selectedCell = day !== null && isSelected(day);
-        const level =
-          day !== null ? Math.min(levelsByDay[day] ?? 0, BUSYNESS_LEVEL_COUNT) : 0;
-        const dotColor = busynessColorFor(level);
         return (
           <View key={`d-${i}`} style={styles.cell}>
             {day !== null && (
@@ -90,10 +86,8 @@ export function MonthGrid({
                     >
                       {day}
                     </Text>
-                    {level > 0 && (
-                      <View
-                        style={[styles.taskDot, { backgroundColor: dotColor }]}
-                      />
+                    {taskDays.has(day) && (
+                      <View style={[styles.taskDot, todayCell && styles.taskDotOnToday]} />
                     )}
                   </View>
                 )}
@@ -148,13 +142,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1F2937',
   },
-  /** 原版圆点位置:绝对定位在日期下方,尺寸放大到 8px */
   taskDot: {
     position: 'absolute',
-    bottom: 3,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    bottom: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: ACCENT,
+  },
+  taskDotOnToday: {
+    backgroundColor: '#FFFFFF',
   },
   selectedText: {
     color: ACCENT,

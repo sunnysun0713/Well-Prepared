@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useBusyness } from '@/data/busyness';
 import { useTasks } from '@/data/tasks-context';
-import { BusynessModal } from './busyness-modal';
 import { DayTasksPanel } from './day-tasks-panel';
 import { MonthGrid } from './month-grid';
 import { WheelPickerModal } from './wheel-picker';
@@ -26,20 +24,19 @@ export function CalendarScreen() {
   // 进入模块时默认选中今天,直接展示当天任务
   const [selected, setSelected] = useState<Date | null>(() => new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [busynessOpen, setBusynessOpen] = useState(false);
   const { getTasks } = useTasks();
-  const { levelFor } = useBusyness();
 
-  // 当前视图月份每日繁忙度等级,用于网格彩色圆点标记
-  const levelsByDay = useMemo(() => {
-    const levels: Record<number, number> = {};
+  // 当前视图月份中有任务的日号,用于网格圆点标记
+  const taskDays = useMemo(() => {
+    const set = new Set<number>();
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
     for (let day = 1; day <= daysInMonth; day += 1) {
-      const count = getTasks(new Date(viewYear, viewMonth, day)).length;
-      if (count > 0) levels[day] = levelFor(count);
+      if (getTasks(new Date(viewYear, viewMonth, day)).length > 0) {
+        set.add(day);
+      }
     }
-    return levels;
-  }, [getTasks, viewYear, viewMonth, levelFor]);
+    return set;
+  }, [getTasks, viewYear, viewMonth]);
 
   const goPrevMonth = () => {
     if (viewMonth === 0) {
@@ -87,16 +84,6 @@ export function CalendarScreen() {
   return (
     <View style={styles.root}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <View style={styles.topRow}>
-        <Pressable
-          style={styles.busynessButton}
-          onPress={() => setBusynessOpen(true)}
-          hitSlop={6}
-        >
-          <Text style={styles.busynessButtonText}>⭐ 繁忙度</Text>
-        </Pressable>
-      </View>
-
       <Text style={styles.today}>
         今天是 {today.getFullYear()}年{today.getMonth() + 1}月{today.getDate()}日
         {'  '}星期{WEEKDAYS[today.getDay()]}
@@ -125,7 +112,7 @@ export function CalendarScreen() {
         month={viewMonth}
         today={today}
         selected={selected}
-        levelsByDay={levelsByDay}
+        taskDays={taskDays}
         onSelectDay={handleSelectDay}
       />
 
@@ -149,8 +136,6 @@ export function CalendarScreen() {
         }}
         onCancel={() => setPickerOpen(false)}
       />
-
-      <BusynessModal visible={busynessOpen} onClose={() => setBusynessOpen(false)} />
       </ScrollView>
     </View>
   );
@@ -167,26 +152,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 24,
-  },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    marginBottom: 4,
-  },
-  busynessButton: {
-    height: 28,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  busynessButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#B45309',
   },
   today: {
     fontSize: 18,
