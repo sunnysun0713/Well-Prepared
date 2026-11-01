@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useAiSettings } from '@/ai/settings';
 import { ReminderTimeModal } from '@/components/ReminderTimeModal';
 import { reminderLabel } from '@/data/reminder-options';
+import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
 
 const ACCENT = '#4F46E5';
@@ -17,6 +18,9 @@ export function ImportReminderModal({ visible, onClose }: Props) {
   const { settings, updateSettings } = useAiSettings();
   const [prevVisible, setPrevVisible] = useState(visible);
   const [remind, setRemind] = useState<number | null>(settings.importReminderMinutes);
+  const [sound, setSound] = useState(
+    settings.importReminderSound || DEFAULT_REMINDER_SOUND,
+  );
   const [reminderOpen, setReminderOpen] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,6 +29,7 @@ export function ImportReminderModal({ visible, onClose }: Props) {
     setPrevVisible(visible);
     if (visible) {
       setRemind(settings.importReminderMinutes);
+      setSound(settings.importReminderSound || DEFAULT_REMINDER_SOUND);
       setReminderOpen(false);
       setError('');
     }
@@ -39,7 +44,7 @@ export function ImportReminderModal({ visible, onClose }: Props) {
         return;
       }
     }
-    updateSettings({ ...settings, importReminderMinutes: remind });
+    updateSettings({ ...settings, importReminderMinutes: remind, importReminderSound: sound });
     onClose();
   };
 
@@ -92,6 +97,8 @@ export function ImportReminderModal({ visible, onClose }: Props) {
         onDeleted={(minutes) => {
           if (remind === minutes) setRemind(10);
         }}
+        sound={sound}
+        onSelectSound={setSound}
       />
     </Modal>
   );

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { reminderLabel } from '@/data/reminder-options';
+import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import { dateKeyOf, type Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
@@ -26,6 +27,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('09:30');
   const [remind, setRemind] = useState<number | null>(null);
+  const [remindSound, setRemindSound] = useState(DEFAULT_REMINDER_SOUND);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +41,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       setStartTime('09:00');
       setEndTime('09:30');
       setRemind(null);
+      setRemindSound(DEFAULT_REMINDER_SOUND);
       setReminderOpen(false);
       setTimeOpen(false);
       setError('');
@@ -70,6 +73,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       endTime,
       note: note.trim() || undefined,
       remindAdvanceMinutes: remind ?? undefined,
+      remindSound: remind != null ? remindSound : undefined,
     };
     addTask(date, task);
     onClose();
@@ -167,6 +171,8 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
         onDeleted={(minutes) => {
           if (remind === minutes) setRemind(10);
         }}
+        sound={remindSound}
+        onSelectSound={setRemindSound}
       />
     </Modal>
   );

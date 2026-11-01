@@ -10,8 +10,12 @@ export interface Task {
   note?: string;
   /** 提前提醒的分钟数;未设置表示无提醒 */
   remindAdvanceMinutes?: number;
+  /** 闹钟铃声 id(见 reminder-sounds.ts);未设置表示默认铃声 */
+  remindSound?: string;
   /** 短信提醒的提前分钟数,独立于闹钟提醒;未设置表示未开启 */
   smsRemindAdvanceMinutes?: number;
+  /** 短信提醒铃声 id;未设置表示默认铃声 */
+  smsRemindSound?: string;
   /** 是否收藏(紧急任务);收藏后每日任务顶部显示数量 */
   favorite?: boolean;
 }

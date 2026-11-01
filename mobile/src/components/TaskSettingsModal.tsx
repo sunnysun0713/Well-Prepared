@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { reminderLabel } from '@/data/reminder-options';
+import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
@@ -36,8 +37,14 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
   const [endTime, setEndTime] = useState(task.endTime);
   const [note, setNote] = useState(task.note ?? '');
   const [remind, setRemind] = useState<number | null>(task.remindAdvanceMinutes ?? null);
+  const [remindSound, setRemindSound] = useState(
+    task.remindSound ?? DEFAULT_REMINDER_SOUND,
+  );
   const [smsRemind, setSmsRemind] = useState<number | null>(
     task.smsRemindAdvanceMinutes ?? null,
+  );
+  const [smsRemindSound, setSmsRemindSound] = useState(
+    task.smsRemindSound ?? DEFAULT_REMINDER_SOUND,
   );
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -54,7 +61,9 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       setEndTime(task.endTime);
       setNote(task.note ?? '');
       setRemind(task.remindAdvanceMinutes ?? null);
+      setRemindSound(task.remindSound ?? DEFAULT_REMINDER_SOUND);
       setSmsRemind(task.smsRemindAdvanceMinutes ?? null);
+      setSmsRemindSound(task.smsRemindSound ?? DEFAULT_REMINDER_SOUND);
       setError('');
       setConfirmDelete(false);
       setTimeOpen(false);
@@ -87,7 +96,9 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       endTime,
       note: note.trim() ? note.trim() : undefined,
       remindAdvanceMinutes: remind ?? undefined,
+      remindSound: remind != null ? remindSound : undefined,
       smsRemindAdvanceMinutes: smsRemind ?? undefined,
+      smsRemindSound: smsRemind != null ? smsRemindSound : undefined,
     });
     onClose();
   };
@@ -247,6 +258,8 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
         onDeleted={(minutes) => {
           if (remind === minutes) setRemind(10);
         }}
+        sound={remindSound}
+        onSelectSound={setRemindSound}
       />
 
       <ReminderTimeModal
@@ -257,6 +270,8 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
         onDeleted={(minutes) => {
           if (smsRemind === minutes) setSmsRemind(10);
         }}
+        sound={smsRemindSound}
+        onSelectSound={setSmsRemindSound}
       />
     </Modal>
   );

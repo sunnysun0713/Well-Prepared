@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
+import { channelIdForSound, findReminderSound } from '@/data/reminder-sounds';
 import type { Task } from '@/data/tasks';
 
 /**
@@ -9,9 +10,6 @@ import type { Task } from '@/data/tasks';
  */
 
 export const NOTIFICATIONS_SUPPORTED = Platform.OS !== 'web';
-
-/** 提醒通知渠道(Android 8+ 必须;也是 Android 13 权限弹窗的前提) */
-const CHANNEL_ID = 'task-reminders';
 
 /** 前台展示行为:应用在前台时也弹出横幅 */
 if (NOTIFICATIONS_SUPPORTED) {
@@ -25,20 +23,24 @@ if (NOTIFICATIONS_SUPPORTED) {
   });
 }
 
-let channelReady = false;
+/** 已创建的通知渠道(每个铃声一个渠道) */
+const readyChannels = new Set<string>();
 
-/** 创建通知渠道:应用启动时调用一次即可,重复调用无副作用 */
-export async function ensureNotificationChannel(): Promise<void> {
-  if (!NOTIFICATIONS_SUPPORTED || channelReady) return;
-  channelReady = true;
+/** 创建指定铃声的通知渠道;应用启动时与排程前都可调用,重复调用无副作用 */
+export async function ensureNotificationChannel(soundId?: string): Promise<void> {
+  if (!NOTIFICATIONS_SUPPORTED) return;
+  const channelId = channelIdForSound(soundId);
+  if (readyChannels.has(channelId)) return;
   try {
-    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+    const sound = findReminderSound(soundId);
+    await Notifications.setNotificationChannelAsync(channelId, {
       name: '任务提醒',
       importance: AndroidImportance.HIGH,
+      sound: sound.filename,
     });
+    readyChannels.add(channelId);
   } catch {
     // 渠道创建失败不阻塞应用使用,后续排程时会再次尝试
-    channelReady = false;
   }
 }
 
@@ -67,8 +69,9 @@ async function scheduleTaskNotification(params: {
   minutes: number;
   task: Task;
   dateKey: string;
+  soundId?: string;
 }): Promise<void> {
-  const { identifier, title, minutes, task, dateKey } = params;
+  const { identifier, title, minutes, task, dateKey, soundId } = params;
   if (!task.startTime) return;
 
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -78,7 +81,8 @@ async function scheduleTaskNotification(params: {
   fireAt.setMinutes(fireAt.getMinutes() - minutes);
   if (fireAt.getTime() <= Date.now()) return;
 
-  await ensureNotificationChannel();
+  const sound = findReminderSound(soundId);
+  await ensureNotificationChannel(sound.id);
   const granted = await ensureNotificationPermission();
   if (!granted) return;
   await Notifications.scheduleNotificationAsync({
@@ -87,11 +91,13 @@ async function scheduleTaskNotification(params: {
       title,
       body: `${task.title} · ${task.startTime} 开始`,
       data: { taskId: task.id, dateKey },
+      // iOS 走 content.sound;Android 8+ 由渠道声音决定
+      sound: sound.filename ?? 'default',
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: fireAt,
-      channelId: CHANNEL_ID,
+      channelId: channelIdForSound(sound.id),
     },
   });
 }
@@ -118,6 +124,7 @@ export async function syncTaskReminder(dateKey: string, task: Task): Promise<voi
         minutes: task.remindAdvanceMinutes,
         task,
         dateKey,
+        soundId: task.remindSound,
       });
     }
     if (task.smsRemindAdvanceMinutes != null) {
@@ -127,6 +134,7 @@ export async function syncTaskReminder(dateKey: string, task: Task): Promise<voi
         minutes: task.smsRemindAdvanceMinutes,
         task,
         dateKey,
+        soundId: task.smsRemindSound,
       });
     }
   } catch {

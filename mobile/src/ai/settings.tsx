@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import { DEFAULT_PRESET_ID } from './presets';
 
 /** AI 设置:所选视觉服务 + API key + 导入模式 + 提取预设 + 导入时自动闹钟;数据结构变化时改版本号 */
@@ -23,6 +24,8 @@ export interface AiSettings {
   presetNames: Record<string, string>;
   /** 导入任务时自动设置的提醒提前分钟数;null 表示不自动设置 */
   importReminderMinutes: number | null;
+  /** 导入任务时自动闹钟使用的铃声 id */
+  importReminderSound: string;
 }
 
 const STORAGE_KEY = 'ai-settings-v1';
@@ -33,6 +36,7 @@ const DEFAULT_SETTINGS: AiSettings = {
   presetId: DEFAULT_PRESET_ID,
   presetNames: {},
   importReminderMinutes: null,
+  importReminderSound: DEFAULT_REMINDER_SOUND,
 };
 
 /** 解析存档中的预设名称:只保留非空字符串值 */
@@ -95,6 +99,10 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
                 parsed.importReminderMinutes >= 0
                   ? parsed.importReminderMinutes
                   : null,
+              importReminderSound:
+                typeof parsed.importReminderSound === 'string'
+                  ? parsed.importReminderSound
+                  : DEFAULT_SETTINGS.importReminderSound,
             },
           });
         } catch {

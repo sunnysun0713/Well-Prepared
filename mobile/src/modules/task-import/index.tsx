@@ -94,6 +94,7 @@ export function TaskImportScreen() {
           draftsOf(tasks, new Date()),
           addTask,
           settings.importReminderMinutes,
+          settings.importReminderSound,
         );
         setImportNote(
           count > 0 ? `已自动导入 ${count} 条任务,到「每日任务」查看` : '没有识别到可导入的任务',

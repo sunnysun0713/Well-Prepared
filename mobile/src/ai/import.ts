@@ -18,12 +18,13 @@ export function draftsOf(tasks: ExtractedTask[], today: Date): ImportDraft[] {
 
 /**
  * 勾选的条目归一化为任务写入参数;标题为空或时间无效的条目被丢弃。
- * remindAdvanceMinutes 传入时,所有导入任务自动设置该提醒。
+ * remindAdvanceMinutes 传入时,所有导入任务自动设置该提醒与对应铃声。
  */
 export function buildImportTasks(
   items: ImportDraft[],
   today: Date,
   remindAdvanceMinutes?: number | null,
+  remindSound?: string,
 ): { date: Date; task: Task }[] {
   const out: { date: Date; task: Task }[] = [];
   items.forEach((it, index) => {
@@ -46,6 +47,7 @@ export function buildImportTasks(
         endTime: end,
         note: it.note.trim() || undefined,
         remindAdvanceMinutes: remindAdvanceMinutes ?? undefined,
+        remindSound: remindAdvanceMinutes != null ? remindSound : undefined,
       },
     });
   });
@@ -57,8 +59,9 @@ export function commitImport(
   items: ImportDraft[],
   addTask: (date: Date, task: Task) => void,
   remindAdvanceMinutes?: number | null,
+  remindSound?: string,
 ): number {
-  const built = buildImportTasks(items, new Date(), remindAdvanceMinutes);
+  const built = buildImportTasks(items, new Date(), remindAdvanceMinutes, remindSound);
   built.forEach(({ date, task }) => addTask(date, task));
   return built.length;
 }

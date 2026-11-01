@@ -53,7 +53,12 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
 
   /** 勾选的条目归一化后写入任务数据层,返回实际写入条数 */
   const importSelected = () => {
-    const count = commitImport(items, addTask, settings.importReminderMinutes);
+    const count = commitImport(
+      items,
+      addTask,
+      settings.importReminderMinutes,
+      settings.importReminderSound,
+    );
     onImport(count);
     onClose();
   };

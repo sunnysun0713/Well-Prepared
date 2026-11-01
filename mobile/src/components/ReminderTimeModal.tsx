@@ -5,6 +5,7 @@ import {
   reminderLabel,
   useReminderOptions,
 } from '@/data/reminder-options';
+import { REMINDER_SOUNDS } from '@/data/reminder-sounds';
 
 const ACCENT = '#4F46E5';
 const MAX_MINUTES = 7 * 24 * 60;
@@ -17,10 +18,22 @@ interface Props {
   onSelect: (minutes: number) => void;
   /** 删除档位后回调(用于处理当前选中项被删) */
   onDeleted: (minutes: number) => void;
+  /** 当前铃声 id(见 reminder-sounds.ts) */
+  sound: string;
+  /** 选择铃声(不关闭弹窗) */
+  onSelectSound: (id: string) => void;
 }
 
 /** 提醒时间设置:选择档位、添加自定义分钟、删除自定义档位 */
-export function ReminderTimeModal({ visible, value, onClose, onSelect, onDeleted }: Props) {
+export function ReminderTimeModal({
+  visible,
+  value,
+  onClose,
+  onSelect,
+  onDeleted,
+  sound,
+  onSelectSound,
+}: Props) {
   const { options, addOption, removeOption } = useReminderOptions();
   const [prevVisible, setPrevVisible] = useState(visible);
   const [customText, setCustomText] = useState('');
@@ -129,6 +142,25 @@ export function ReminderTimeModal({ visible, value, onClose, onSelect, onDeleted
           </View>
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
+          <Text style={styles.soundLabel}>铃声</Text>
+          <View style={styles.soundRow}>
+            {REMINDER_SOUNDS.map((option) => {
+              const active = sound === option.id;
+              return (
+                <Pressable
+                  key={option.id}
+                  onPress={() => onSelectSound(option.id)}
+                  style={[styles.soundChip, active && styles.soundChipActive]}
+                >
+                  <Text style={[styles.soundText, active && styles.soundTextActive]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Text style={styles.soundHint}>铃声在手机通知中播放,需使用重新打包后的 App</Text>
+
           <Pressable style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeText}>关闭</Text>
           </Pressable>
@@ -211,6 +243,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginLeft: 10,
+  },
+  soundLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  soundRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  soundChip: {
+    flex: 1,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  soundChipActive: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  soundText: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  soundTextActive: {
+    color: ACCENT,
+    fontWeight: '600',
+  },
+  soundHint: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 6,
   },
   cancelText: {
     fontSize: 12,

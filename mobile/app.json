@@ -16,6 +16,16 @@
           "cameraPermission": "允许使用相机,以拍摄要提取任务的图片",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/chime.wav",
+            "./assets/sounds/bright.wav",
+            "./assets/sounds/gentle.wav"
+          ]
+        }
       ]
     ],
     "experiments": {
