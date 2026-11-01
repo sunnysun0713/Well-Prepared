@@ -240,7 +240,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: '#F5F6FA',
+    backgroundColor: '#9FA0A2',
     alignItems: 'center',
     justifyContent: 'center',
   },
