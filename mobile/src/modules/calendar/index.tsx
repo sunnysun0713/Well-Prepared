@@ -8,14 +8,8 @@ import { MonthGrid } from './month-grid';
 import { WheelPickerModal } from './wheel-picker';
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
-const TODAY_YEAR = new Date().getFullYear();
-// 滚轮候选年份:今年往前 50 年
+// 滚轮候选年份:当年往前 50 年(组件内按当前年份生成,跨年后自动覆盖新年份)
 const YEARS_BACK = 50;
-const FIRST_YEAR = TODAY_YEAR - YEARS_BACK;
-const YEAR_OPTIONS = Array.from(
-  { length: YEARS_BACK + 1 },
-  (_, i) => `${FIRST_YEAR + i}年`,
-);
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => `${i + 1}月`);
 
 /** 日历模块主界面:顶部今天日期,年月切换栏,月历网格;点选日期后网格下方显示当日代办 */
@@ -27,6 +21,13 @@ export function CalendarScreen() {
   const [selected, setSelected] = useState<Date | null>(() => new Date());
   const [pickerOpen, setPickerOpen] = useState(false);
   const { getTasks } = useTasks();
+
+  // 年份候选与起始年按当前年份生成(模块加载当年固化会导致跨年后索引越界)
+  const firstYear = today.getFullYear() - YEARS_BACK;
+  const yearOptions = useMemo(
+    () => Array.from({ length: YEARS_BACK + 1 }, (_, i) => `${firstYear + i}年`),
+    [firstYear],
+  );
 
   // 当前视图月份中有任务的日号,用于网格圆点标记
   const taskDays = useMemo(() => {
@@ -84,10 +85,10 @@ export function CalendarScreen() {
 
   /** 某年某月的天数:JS Date 自动处理大小月与闰年 */
   const getDayCount = (yearIdx: number, monthIdx: number) =>
-    new Date(FIRST_YEAR + yearIdx, monthIdx + 1, 0).getDate();
+    new Date(firstYear + yearIdx, monthIdx + 1, 0).getDate();
 
   // 打开弹窗时三个滚轮定位到今天
-  const todayYearIndex = today.getFullYear() - FIRST_YEAR;
+  const todayYearIndex = today.getFullYear() - firstYear;
   const todayMonthIndex = today.getMonth();
   const todayDayIndex = today.getDate() - 1;
 
@@ -167,14 +168,14 @@ export function CalendarScreen() {
         <WheelPickerModal
           visible={pickerOpen}
           title="选择日期"
-          yearOptions={YEAR_OPTIONS}
+          yearOptions={yearOptions}
           monthOptions={MONTH_OPTIONS}
           getDayCount={getDayCount}
           yearValue={todayYearIndex}
           monthValue={todayMonthIndex}
           dayValue={todayDayIndex}
           onConfirm={(yearIdx, monthIdx, dayIdx) => {
-            const y = FIRST_YEAR + yearIdx;
+            const y = firstYear + yearIdx;
             setViewYear(y);
             setViewMonth(monthIdx);
             setSelected(new Date(y, monthIdx, dayIdx + 1));
