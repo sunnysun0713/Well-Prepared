@@ -8,11 +8,8 @@ export interface Task {
   /** 结束时间,格式 'HH:mm' */
   endTime: string;
   note?: string;
-  done?: boolean;
   /** 提前提醒的分钟数;未设置表示无提醒 */
   remindAdvanceMinutes?: number;
-  /** 云端对象 id;仅登录并同步后存在 */
-  remoteId?: string;
   /** 分类标签 id(见 categories.ts);未设置表示无标签 */
   categoryId?: string;
   /** 是否收藏(紧急任务);收藏后日历星星加深色边框、每日任务顶部显示数量 */
@@ -29,27 +26,27 @@ const SAMPLE_PLAN: { offset: number; tasks: Omit<Task, 'id'>[] }[] = [
   {
     offset: -3,
     tasks: [
-      { title: '整理上周资料', startTime: '10:00', endTime: '10:40', note: '归档到网盘', done: true },
-      { title: '健身 1 小时', startTime: '19:00', endTime: '20:00', done: true },
+      { title: '整理上周资料', startTime: '10:00', endTime: '10:40', note: '归档到网盘' },
+      { title: '健身 1 小时', startTime: '19:00', endTime: '20:00' },
     ],
   },
   {
     offset: -2,
     tasks: [
-      { title: '项目评审会', startTime: '14:00', endTime: '15:30', note: '会议室 A', done: true },
+      { title: '项目评审会', startTime: '14:00', endTime: '15:30', note: '会议室 A' },
     ],
   },
   {
     offset: -1,
     tasks: [
-      { title: '超市采购', startTime: '18:30', endTime: '19:15', note: '牛奶、鸡蛋', done: true },
-      { title: '视频剪辑', startTime: '20:00', endTime: '21:00', done: true },
+      { title: '超市采购', startTime: '18:30', endTime: '19:15', note: '牛奶、鸡蛋' },
+      { title: '视频剪辑', startTime: '20:00', endTime: '21:00' },
     ],
   },
   {
     offset: 0,
     tasks: [
-      { title: '晨跑 3 公里', startTime: '07:30', endTime: '08:10', note: '沿江绿道', done: true },
+      { title: '晨跑 3 公里', startTime: '07:30', endTime: '08:10', note: '沿江绿道' },
       { title: '吃早餐', startTime: '08:00', endTime: '08:20' },
       { title: '团队站会', startTime: '09:30', endTime: '10:00', note: '汇报本周进度' },
       { title: '午饭', startTime: '12:00', endTime: '12:40' },

@@ -64,17 +64,12 @@ export function TaskCard({ task, past }: Props) {
             if (category) setExpanded((value) => !value);
           }}
         >
-          <Text style={[styles.title, task.done && styles.titleDone]}>{task.title}</Text>
+          <Text style={styles.title}>{task.title}</Text>
           {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
         </Pressable>
       </View>
 
       {task.remindAdvanceMinutes != null && <Text style={styles.bell}>🔔</Text>}
-      <Pressable onPress={() => updateTask(task.id, { done: !task.done })} hitSlop={8}>
-        <Text style={[styles.status, task.done && styles.statusDone]}>
-          {task.done ? '✓' : '○'}
-        </Text>
-      </Pressable>
       <Pressable onPress={() => setSettingsOpen(true)} hitSlop={8}>
         <Text style={styles.gear}>⚙️</Text>
       </Pressable>
@@ -178,23 +173,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#1F2937',
   },
-  titleDone: {
-    textDecorationLine: 'line-through',
-    color: '#9CA3AF',
-  },
   note: {
     fontSize: 12,
     color: '#9CA3AF',
   },
   bell: {
     fontSize: 14,
-  },
-  status: {
-    fontSize: 18,
-    color: '#D1D5DB',
-  },
-  statusDone: {
-    color: '#10B981',
   },
   gear: {
     fontSize: 16,

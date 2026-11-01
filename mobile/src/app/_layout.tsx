@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { AccountProvider } from '@/account/account-context';
 import { AiSettingsProvider } from '@/ai/settings';
 import { BusynessProvider } from '@/data/busyness';
 import { CategoriesProvider } from '@/data/categories-context';
@@ -19,7 +18,6 @@ export default function RootLayout() {
     <CategoriesProvider>
       <BusynessProvider>
         <ReminderOptionsProvider>
-        <AccountProvider>
           <TasksProvider>
             <AiSettingsProvider>
               <StatusBar style="dark" />
@@ -29,7 +27,6 @@ export default function RootLayout() {
               </Stack>
             </AiSettingsProvider>
           </TasksProvider>
-        </AccountProvider>
         </ReminderOptionsProvider>
       </BusynessProvider>
     </CategoriesProvider>

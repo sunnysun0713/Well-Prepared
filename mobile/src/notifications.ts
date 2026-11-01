@@ -60,7 +60,7 @@ const identifierOf = (taskId: string) => `task-${taskId}`;
 
 /**
  * 同步一条任务的提醒:先取消旧排程,再按当前设置重新排程。
- * 无提醒、已完成、无起始时间或触发时间已过 → 只取消不排程。
+ * 无提醒、无起始时间或触发时间已过 → 只取消不排程。
  */
 export async function syncTaskReminder(dateKey: string, task: Task): Promise<void> {
   if (!NOTIFICATIONS_SUPPORTED) return;
@@ -70,7 +70,7 @@ export async function syncTaskReminder(dateKey: string, task: Task): Promise<voi
   } catch {
     // 不存在该 id 的排程时取消会失败,忽略
   }
-  if (task.remindAdvanceMinutes == null || task.done) return;
+  if (task.remindAdvanceMinutes == null) return;
   if (!task.startTime) return;
 
   const [y, m, d] = dateKey.split('-').map(Number);
