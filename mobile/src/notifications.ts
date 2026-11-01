@@ -98,6 +98,8 @@ async function scheduleTaskNotification(params: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: fireAt,
       channelId: channelIdForSound(sound.id),
+      // alarmClock 走系统 setAlarmClock:精确到秒触发,华为等厂商的电池策略不能延迟
+      delivery: 'alarmClock',
     },
   });
 }
