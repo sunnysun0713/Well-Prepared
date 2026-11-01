@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { commitImport, draftsOf } from '@/ai/import';
+import { useAiSettings } from '@/ai/settings';
 import type { ExtractedTask, ImportDraft } from '@/ai/types';
 import { useTasks } from '@/data/tasks-context';
 
@@ -27,6 +28,7 @@ interface Props {
 /** 提取结果确认弹窗:逐条勾选/编辑后导入任务数据层 */
 export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props) {
   const { addTask } = useTasks();
+  const { settings } = useAiSettings();
   const [prevVisible, setPrevVisible] = useState(visible);
   const [items, setItems] = useState<ImportDraft[]>([]);
 
@@ -51,7 +53,7 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
 
   /** 勾选的条目归一化后写入任务数据层,返回实际写入条数 */
   const importSelected = () => {
-    const count = commitImport(items, addTask);
+    const count = commitImport(items, addTask, settings.importReminderMinutes);
     onImport(count);
     onClose();
   };

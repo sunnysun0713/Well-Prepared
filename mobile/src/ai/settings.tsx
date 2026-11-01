@@ -11,7 +11,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_PRESET_ID } from './presets';
 
-/** AI 设置:所选视觉服务 + API key + 导入模式 + 提取预设;数据结构变化时改版本号 */
+/** AI 设置:所选视觉服务 + API key + 导入模式 + 提取预设 + 导入时自动闹钟;数据结构变化时改版本号 */
 export interface AiSettings {
   providerId: string;
   apiKey: string;
@@ -21,6 +21,8 @@ export interface AiSettings {
   presetId: string;
   /** 预设自定义名称:presetId → 名称;未设置的预设使用默认名 */
   presetNames: Record<string, string>;
+  /** 导入任务时自动设置的提醒提前分钟数;null 表示不自动设置 */
+  importReminderMinutes: number | null;
 }
 
 const STORAGE_KEY = 'ai-settings-v1';
@@ -30,6 +32,7 @@ const DEFAULT_SETTINGS: AiSettings = {
   autoImport: false,
   presetId: DEFAULT_PRESET_ID,
   presetNames: {},
+  importReminderMinutes: null,
 };
 
 /** 解析存档中的预设名称:只保留非空字符串值 */
@@ -86,6 +89,12 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
               presetId:
                 typeof parsed.presetId === 'string' ? parsed.presetId : DEFAULT_SETTINGS.presetId,
               presetNames: parsePresetNames(parsed.presetNames),
+              importReminderMinutes:
+                typeof parsed.importReminderMinutes === 'number' &&
+                Number.isInteger(parsed.importReminderMinutes) &&
+                parsed.importReminderMinutes >= 0
+                  ? parsed.importReminderMinutes
+                  : null,
             },
           });
         } catch {

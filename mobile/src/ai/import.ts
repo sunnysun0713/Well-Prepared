@@ -16,10 +16,14 @@ export function draftsOf(tasks: ExtractedTask[], today: Date): ImportDraft[] {
   }));
 }
 
-/** 勾选的条目归一化为任务写入参数;标题为空或时间无效的条目被丢弃 */
+/**
+ * 勾选的条目归一化为任务写入参数;标题为空或时间无效的条目被丢弃。
+ * remindAdvanceMinutes 传入时,所有导入任务自动设置该提醒。
+ */
 export function buildImportTasks(
   items: ImportDraft[],
   today: Date,
+  remindAdvanceMinutes?: number | null,
 ): { date: Date; task: Task }[] {
   const out: { date: Date; task: Task }[] = [];
   items.forEach((it, index) => {
@@ -41,6 +45,7 @@ export function buildImportTasks(
         startTime: start,
         endTime: end,
         note: it.note.trim() || undefined,
+        remindAdvanceMinutes: remindAdvanceMinutes ?? undefined,
       },
     });
   });
@@ -51,8 +56,9 @@ export function buildImportTasks(
 export function commitImport(
   items: ImportDraft[],
   addTask: (date: Date, task: Task) => void,
+  remindAdvanceMinutes?: number | null,
 ): number {
-  const built = buildImportTasks(items, new Date());
+  const built = buildImportTasks(items, new Date(), remindAdvanceMinutes);
   built.forEach(({ date, task }) => addTask(date, task));
   return built.length;
 }

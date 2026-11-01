@@ -86,7 +86,11 @@ export function TaskImportScreen() {
       const tasks = await extractTasksFromImage(provider, settings.apiKey, image, preset.prompt);
       // 自动导入模式:直接归一化写入,不弹确认列表
       if (settings.autoImport) {
-        const count = commitImport(draftsOf(tasks, new Date()), addTask);
+        const count = commitImport(
+          draftsOf(tasks, new Date()),
+          addTask,
+          settings.importReminderMinutes,
+        );
         setImportNote(
           count > 0 ? `已自动导入 ${count} 条任务,到「每日任务」查看` : '没有识别到可导入的任务',
         );
