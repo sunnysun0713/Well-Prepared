@@ -5,18 +5,19 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cancelTaskReminder, syncTaskReminder } from '@/notifications';
-import { buildInitialTasks, dateKeyOf, type Task } from './tasks';
+import { pullState, pushState, syncEnabled } from './sync';
+import { buildInitialTasks, dateKeyOf, type Task, type TasksState } from './tasks';
 
 /** 本地存档键;数据结构变化时改版本号,避免读到旧格式 */
 const STORAGE_KEY = 'tasks-state-v1';
-
-/** 任务状态:按日期键分组 */
-type TasksState = Record<string, Task[]>;
+/** 存档修改时间戳键:云同步冲突判定用,与任务存档分开存,不改存档格式 */
+const UPDATED_AT_KEY = 'tasks-updatedAt-v1';
 
 type Action =
   | { type: 'REPLACE'; state: TasksState }
@@ -60,13 +61,26 @@ interface TasksContextValue {
 
 const TasksContext = createContext<TasksContextValue | null>(null);
 
-/** 任务状态提供者:AsyncStorage 本地持久化,重启后修改依然保留 */
+/** 重排某状态下全部任务的提醒(启动水合与云端合并后共用) */
+function resyncAllReminders(state: TasksState): void {
+  for (const [key, tasks] of Object.entries(state)) {
+    for (const task of tasks) void syncTaskReminder(key, task);
+  }
+}
+
+/** 任务状态提供者:AsyncStorage 本地持久化;配置云同步后与云端按时间戳取新合并 */
 export function TasksProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, buildInitialTasks);
   // 本地存档读取完成后才允许回写,避免用示例数据覆盖存档
   const [hydrated, setHydrated] = useState(false);
+  // 存档最后修改时间戳:云同步冲突判定用
+  const [updatedAt, setUpdatedAt] = useState(0);
+  // 云端合并引起的状态替换跳过一次上传,避免把自己刚拉下来的数据又推回去
+  const skipPushRef = useRef(false);
+  // 上传防抖计时器
+  const pushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 启动时读取本地存档
+  // 启动时读取本地存档;已配置云同步时与云端合并(时间戳取新)
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -76,20 +90,52 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       } catch {
         raw = null;
       }
-      if (cancelled) return;
+      let localState: TasksState | null = null;
       if (raw) {
         try {
           const parsed = JSON.parse(raw) as TasksState;
           dispatch({ type: 'REPLACE', state: parsed });
+          localState = parsed;
           // 启动时按存档重排全部提醒(覆盖本功能上线前只存了数字的旧任务)
-          for (const [key, tasks] of Object.entries(parsed)) {
-            for (const task of tasks) void syncTaskReminder(key, task);
-          }
+          resyncAllReminders(parsed);
         } catch {
           // 存档损坏时继续使用示例数据
         }
       }
-      setHydrated(true);
+      let localUpdatedAt = 0;
+      try {
+        const rawUpdatedAt = await AsyncStorage.getItem(UPDATED_AT_KEY);
+        const n = Number(rawUpdatedAt);
+        if (rawUpdatedAt && Number.isFinite(n) && n > 0) localUpdatedAt = n;
+      } catch {
+        // 读不到时间戳按旧存档处理,下方顺延为当前时间
+      }
+      // 本功能上线前的存档没有时间戳:视为刚修改过,避免被云端旧数据覆盖
+      if (localState && localUpdatedAt === 0) {
+        localUpdatedAt = Date.now();
+      }
+      setUpdatedAt(localUpdatedAt);
+
+      if (!cancelled && syncEnabled()) {
+        const remote = await pullState();
+        if (!cancelled) {
+          if (!remote) {
+            // 云端暂无数据:上传本地存档
+            if (localState) void pushState(localState, localUpdatedAt);
+          } else if (remote.updatedAt > localUpdatedAt) {
+            // 云端较新:整体替换本地并重排提醒,跳过本次上传
+            const remoteState = remote.state as TasksState;
+            dispatch({ type: 'REPLACE', state: remoteState });
+            setUpdatedAt(remote.updatedAt);
+            resyncAllReminders(remoteState);
+            skipPushRef.current = true;
+          } else if (localState) {
+            // 本地较新或时间戳相同:以上传本地为准
+            void pushState(localState, localUpdatedAt);
+          }
+        }
+      }
+      if (!cancelled) setHydrated(true);
     })();
     return () => {
       cancelled = true;
@@ -104,6 +150,28 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     });
   }, [hydrated, state]);
 
+  // 时间戳变化时持久化(用户操作与水合时都会走到)
+  useEffect(() => {
+    if (!hydrated) return;
+    AsyncStorage.setItem(UPDATED_AT_KEY, String(updatedAt)).catch(() => {
+      // 保存失败不影响本次使用,下次变更时重试
+    });
+  }, [hydrated, updatedAt]);
+
+  // 状态或时间戳变化时防抖上传云端;云端按时间戳取新,旧数据不会覆盖新数据
+  useEffect(() => {
+    if (!hydrated) return;
+    // 云端合并标记只消费一次,未配置云同步时也顺手清掉
+    skipPushRef.current = false;
+    if (!syncEnabled() || updatedAt <= 0) return;
+    pushTimerRef.current = setTimeout(() => {
+      void pushState(state, updatedAt);
+    }, 2000);
+    return () => {
+      if (pushTimerRef.current !== null) clearTimeout(pushTimerRef.current);
+    };
+  }, [hydrated, state, updatedAt]);
+
   const getTasks = useCallback(
     (date: Date) =>
       (state[dateKeyOf(date)] ?? [])
@@ -115,6 +183,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const addTask = useCallback((date: Date, task: Task) => {
     const key = dateKeyOf(date);
     dispatch({ type: 'ADD_TASK', dateKey: key, task });
+    setUpdatedAt(Date.now());
     // 有提醒时排程本地通知(异步,不阻塞界面)
     void syncTaskReminder(key, task);
   }, []);
@@ -122,6 +191,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   const updateTask = useCallback(
     (id: string, patch: Partial<Omit<Task, 'id'>>) => {
       dispatch({ type: 'UPDATE_TASK', id, patch });
+      setUpdatedAt(Date.now());
       // 找到任务所属日期,按更新后的完整任务重排提醒
       for (const [key, tasks] of Object.entries(state)) {
         const current = tasks.find((t) => t.id === id);
@@ -136,6 +206,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
   const deleteTask = useCallback((id: string) => {
     dispatch({ type: 'DELETE_TASK', id });
+    setUpdatedAt(Date.now());
     void cancelTaskReminder(id);
   }, []);
 

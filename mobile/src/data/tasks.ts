@@ -20,6 +20,9 @@ export interface Task {
   favorite?: boolean;
 }
 
+/** 任务状态:按日期键分组 */
+export type TasksState = Record<string, Task[]>;
+
 /** 日期键 'YYYY-MM-DD' */
 export function dateKeyOf(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
@@ -85,9 +88,9 @@ const SAMPLE_PLAN: { offset: number; tasks: Omit<Task, 'id'>[] }[] = [
 ];
 
 /** 用示例计划构建初始任务状态(按日期键分组) */
-export function buildInitialTasks(): Record<string, Task[]> {
+export function buildInitialTasks(): TasksState {
   const today = new Date();
-  const state: Record<string, Task[]> = {};
+  const state: TasksState = {};
   for (const plan of SAMPLE_PLAN) {
     const d = new Date(today);
     d.setDate(d.getDate() + plan.offset);
