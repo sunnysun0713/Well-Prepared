@@ -31,12 +31,14 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
   const { settings } = useAiSettings();
   const [prevVisible, setPrevVisible] = useState(visible);
   const [items, setItems] = useState<ImportDraft[]>([]);
+  const [error, setError] = useState('');
 
   // 打开弹窗时按最新提取结果重建条目(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
       setItems(draftsOf(tasks, new Date()));
+      setError('');
     }
   }
 
@@ -53,6 +55,12 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
 
   /** 勾选的条目归一化后写入任务数据层,返回实际写入条数 */
   const importSelected = () => {
+    // 勾选条目标题为空会被静默丢弃,导入前拦截并提示,避免按钮计数与实际写入不符
+    if (items.some((it) => it.selected && !it.title.trim())) {
+      setError('有勾选的任务还没有填写任务名,请补全或取消勾选');
+      return;
+    }
+    setError('');
     const count = commitImport(items, addTask, {
       remindAdvanceMinutes: settings.importReminderMinutes,
       remindSound: settings.importReminderSound,
@@ -85,7 +93,11 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
                     </Text>
                   </Pressable>
                 </View>
-                <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+                <ScrollView
+                  style={styles.list}
+                  contentContainerStyle={styles.listContent}
+                  keyboardShouldPersistTaps="handled"
+                >
                   {items.map((it, index) => (
                     <View key={index} style={styles.itemCard}>
                       <View style={styles.itemHeader}>
@@ -146,6 +158,12 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
             ) : (
               <Text style={styles.empty}>没有识别到任务,试试更清晰的照片</Text>
             )}
+
+            {error ? (
+              <Text style={styles.error} accessibilityRole="alert">
+                {error}
+              </Text>
+            ) : null}
 
             <View style={styles.actions}>
               <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
@@ -300,6 +318,11 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     paddingVertical: 24,
+  },
+  error: {
+    fontSize: 12,
+    color: '#DC2626',
+    marginTop: 8,
   },
   actions: {
     flexDirection: 'row',
