@@ -10,20 +10,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { reminderLabel } from '@/data/reminder-options';
-import {
-  channelIdForSound,
-  DEFAULT_REMINDER_SOUND,
-  findReminderSound,
-} from '@/data/reminder-sounds';
+import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
-import {
-  ensureNotificationChannel,
-  ensureNotificationPermission,
-  NOTIFICATIONS_SUPPORTED,
-} from '@/notifications';
+import { ensureNotificationPermission, NOTIFICATIONS_SUPPORTED } from '@/notifications';
 import { ReminderTimeModal } from './ReminderTimeModal';
 import { TimeRangeModal } from './TimeRangeModal';
 
@@ -56,7 +47,6 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
     task.smsRemindSound ?? DEFAULT_REMINDER_SOUND,
   );
   const [error, setError] = useState('');
-  const [testNote, setTestNote] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -75,7 +65,6 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       setSmsRemind(task.smsRemindAdvanceMinutes ?? null);
       setSmsRemindSound(task.smsRemindSound ?? DEFAULT_REMINDER_SOUND);
       setError('');
-      setTestNote('');
       setConfirmDelete(false);
       setTimeOpen(false);
       setReminderOpen(false);
@@ -112,35 +101,6 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
       smsRemindSound: smsRemind != null ? smsRemindSound : undefined,
     });
     onClose();
-  };
-
-  /** 发送一条 10 秒后弹出的测试提醒,验证通知权限/渠道/铃声是否正常 */
-  const sendTestNotification = async () => {
-    try {
-      const granted = await ensureNotificationPermission();
-      if (!granted) {
-        setTestNote('通知权限被拒绝,请到系统设置里允许通知');
-        return;
-      }
-      const sound = findReminderSound(remindSound);
-      await ensureNotificationChannel(sound.id);
-      await Notifications.scheduleNotificationAsync({
-        identifier: `test-${Date.now()}`,
-        content: {
-          title: '测试提醒',
-          body: '提醒通道正常(10 秒前发送)',
-          sound: sound.filename ?? 'default',
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: new Date(Date.now() + 10_000),
-          channelId: channelIdForSound(sound.id),
-        },
-      });
-      setTestNote('测试提醒已发送,10 秒后弹出;请勿划掉应用');
-    } catch {
-      setTestNote('测试提醒发送失败,请重试');
-    }
   };
 
   return (
@@ -234,11 +194,6 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
             <Text style={styles.smsHint}>
               到时单独弹出一条「短信提醒」消息,时间可与闹钟不同
             </Text>
-
-            <Pressable onPress={sendTestNotification} hitSlop={6} accessibilityRole="button">
-              <Text style={styles.testButton}>发送测试提醒(10 秒后弹出)</Text>
-            </Pressable>
-            {testNote ? <Text style={styles.testNote}>{testNote}</Text> : null}
 
             {NOTIFICATIONS_SUPPORTED && (
               <Text style={styles.reminderHint}>
@@ -431,18 +386,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     marginTop: 6,
-  },
-  testButton: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: ACCENT,
-    marginTop: 8,
-    alignSelf: 'flex-start',
-  },
-  testNote: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 4,
   },
   error: {
     fontSize: 12,
