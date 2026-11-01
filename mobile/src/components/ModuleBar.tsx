@@ -1,5 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { MODULES } from '@/modules/registry';
+import { colors, radius } from '@/theme';
 
 interface Props {
   /** 当前激活模块 id */
@@ -10,7 +12,7 @@ interface Props {
   onManage: () => void;
 }
 
-/** 顶部模块选择栏:已注册模块 + 末尾「管理模块」 */
+/** 顶部模块选择栏:分段式模块切换 + 右侧「管理模块」图标按钮 */
 export function ModuleBar({ activeId, onSelect, onManage }: Props) {
   return (
     <View style={styles.container}>
@@ -26,24 +28,33 @@ export function ModuleBar({ activeId, onSelect, onManage }: Props) {
             <Pressable
               key={m.id}
               onPress={() => onSelect(m.id)}
-              style={[styles.chip, active && styles.chipActive]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              style={({ pressed }) => [
+                styles.chip,
+                active && styles.chipActive,
+                pressed && !active && styles.pressed,
+              ]}
             >
-              <Text style={styles.chipIcon}>{m.icon}</Text>
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {m.title}
-              </Text>
+              <Ionicons
+                name={m.icon}
+                size={16}
+                color={active ? colors.onPrimary : colors.textSecondary}
+              />
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{m.title}</Text>
             </Pressable>
           );
         })}
-        <View style={styles.divider} />
-        <Pressable
-          onPress={onManage}
-          style={({ pressed }) => [styles.chipManage, pressed && styles.pressed]}
-        >
-          <Text style={styles.chipIcon}>⚙️</Text>
-          <Text style={styles.chipText}>管理模块</Text>
-        </Pressable>
       </ScrollView>
+      <Pressable
+        onPress={onManage}
+        accessibilityRole="button"
+        accessibilityLabel="管理模块"
+        hitSlop={6}
+        style={({ pressed }) => [styles.manageButton, pressed && styles.pressed]}
+      >
+        <Ionicons name="apps-outline" size={18} color={colors.textSecondary} />
+      </Pressable>
     </View>
   );
 }
@@ -52,9 +63,10 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.border,
+    paddingRight: 12,
   },
   scroll: {
     flex: 1,
@@ -62,49 +74,38 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    height: 36,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
   },
   chipActive: {
-    backgroundColor: '#4F46E5',
-  },
-  chipIcon: {
-    fontSize: 15,
+    backgroundColor: colors.primary,
   },
   chipText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   chipTextActive: {
-    color: '#FFFFFF',
+    color: colors.onPrimary,
+    fontWeight: '600',
   },
-  divider: {
-    width: StyleSheet.hairlineWidth,
-    height: 20,
-    backgroundColor: '#D1D5DB',
-    marginHorizontal: 4,
-  },
-  chipManage: {
-    flexDirection: 'row',
+  manageButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
   },
   pressed: {
     opacity: 0.6,

@@ -4,6 +4,6 @@ import type { AppModule } from '../types';
 export const calendarModule: AppModule = {
   id: 'calendar',
   title: '日历',
-  icon: '📅',
+  icon: 'calendar-outline',
   component: CalendarScreen,
 };

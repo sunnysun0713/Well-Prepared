@@ -1,8 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, radius, shadow } from '@/theme';
 
 const WEEK_HEADERS = ['一', '二', '三', '四', '五', '六', '日'];
-const WEEKEND_COLOR = '#DC2626';
-const ACCENT = '#4F46E5';
 
 interface Props {
   year: number;
@@ -17,7 +16,7 @@ interface Props {
   onSelectDay: (day: number) => void;
 }
 
-/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期空心高亮,有任务显示圆点 */
+/** 月历网格:周标题行 + 固定 6 周(42 格)。今天实心高亮,选中日期浅色高亮,有任务显示圆点 */
 export function MonthGrid({
   year,
   month,
@@ -42,7 +41,7 @@ export function MonthGrid({
     month === today.getMonth() &&
     day === today.getDate();
 
-  // 选中恰为今天时只显示今天的实心圈,空心圈不与今日高亮重叠
+  // 选中恰为今天时只显示今天的实心圈,选中高亮不与今日高亮重叠
   const isSelected = (day: number) =>
     selected !== null &&
     !isToday(day) &&
@@ -53,10 +52,8 @@ export function MonthGrid({
   return (
     <View style={styles.grid}>
       {WEEK_HEADERS.map((h, i) => (
-        <View key={`h-${i}`} style={styles.cell}>
-          <Text style={[styles.weekHeader, i >= 5 && { color: WEEKEND_COLOR }]}>
-            {h}
-          </Text>
+        <View key={`h-${i}`} style={styles.headerCell}>
+          <Text style={[styles.weekHeader, i >= 5 && styles.weekendHeader]}>{h}</Text>
         </View>
       ))}
       {cells.map((day, i) => {
@@ -66,20 +63,26 @@ export function MonthGrid({
         return (
           <View key={`d-${i}`} style={styles.cell}>
             {day !== null && (
-              <Pressable onPress={() => onSelectDay(day)} hitSlop={4}>
+              <Pressable
+                onPress={() => onSelectDay(day)}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={`${month + 1}月${day}日${taskDays.has(day) ? ',有任务' : ''}`}
+                accessibilityState={{ selected: todayCell || selectedCell }}
+              >
                 {({ pressed }) => (
                   <View
                     style={[
                       styles.dayCircle,
-                      todayCell && styles.todayCircle,
                       selectedCell && styles.selectedCircle,
+                      todayCell && styles.todayCircle,
                       pressed && styles.pressed,
                     ]}
                   >
                     <Text
                       style={[
                         styles.dayText,
-                        weekend && !todayCell && !selectedCell && { color: WEEKEND_COLOR },
+                        weekend && !todayCell && !selectedCell && styles.weekendText,
                         selectedCell && styles.selectedText,
                         todayCell && styles.todayText,
                       ]}
@@ -104,61 +107,77 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     paddingVertical: 8,
+    paddingHorizontal: 4,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E7EB',
+    borderColor: colors.border,
+    ...shadow.card,
+  },
+  headerCell: {
+    width: '14.285%',
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cell: {
     width: '14.285%',
-    height: 44,
+    height: 46,
     alignItems: 'center',
     justifyContent: 'center',
   },
   weekHeader: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  weekendHeader: {
+    color: colors.weekend,
   },
   dayCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   todayCircle: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.primary,
   },
   selectedCircle: {
-    borderWidth: 2,
-    borderColor: ACCENT,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
   },
   pressed: {
     opacity: 0.6,
   },
   dayText: {
     fontSize: 15,
-    color: '#1F2937',
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+  },
+  weekendText: {
+    color: colors.weekend,
   },
   taskDot: {
     position: 'absolute',
-    bottom: 4,
+    bottom: 5,
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: ACCENT,
+    backgroundColor: colors.primary,
   },
   taskDotOnToday: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.onPrimary,
   },
   selectedText: {
-    color: ACCENT,
-    fontWeight: '600',
+    color: colors.primary,
+    fontWeight: '700',
   },
   todayText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+    color: colors.onPrimary,
+    fontWeight: '700',
   },
 });

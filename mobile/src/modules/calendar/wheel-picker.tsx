@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { WheelPicker } from '@/components/WheelPicker';
-
-const ACCENT = '#4F46E5';
+import { colors, radius } from '@/theme';
 
 interface WheelPickerModalProps {
   visible: boolean;
@@ -100,22 +99,22 @@ export function WheelPickerModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(17, 24, 39, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   card: {
     width: 300,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
     paddingVertical: 20,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
   title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
     marginBottom: 12,
   },
   wheelsRow: {
@@ -130,25 +129,25 @@ const styles = StyleSheet.create({
   },
   button: {
     flex: 1,
-    height: 40,
-    borderRadius: 20,
+    height: 44,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelButton: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.surfaceMuted,
   },
   confirmButton: {
-    backgroundColor: ACCENT,
+    backgroundColor: colors.primary,
   },
   cancelText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   confirmText: {
     fontSize: 15,
-    fontWeight: '500',
-    color: '#FFFFFF',
+    fontWeight: '600',
+    color: colors.onPrimary,
   },
 });

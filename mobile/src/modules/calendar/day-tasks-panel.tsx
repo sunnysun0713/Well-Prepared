@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AddTaskModal } from '@/components/AddTaskModal';
 import { TaskCard } from '@/components/TaskCard';
 import { useTasks } from '@/data/tasks-context';
+import { colors, radius } from '@/theme';
 
-const ACCENT = '#4F46E5';
 const pad = (n: number) => String(n).padStart(2, '0');
 
 interface Props {
@@ -27,17 +28,30 @@ export function DayTasksPanel({ date }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>
-          {date.getMonth() + 1}月{date.getDate()}日 代办事项({tasks.length})
-        </Text>
-        <Pressable style={styles.addButton} onPress={() => setAddOpen(true)} hitSlop={6}>
-          <Text style={styles.addButtonText}>+ 新增</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>
+            {date.getMonth() + 1}月{date.getDate()}日 代办
+          </Text>
+          <View style={styles.countPill}>
+            <Text style={styles.countText}>{tasks.length}</Text>
+          </View>
+        </View>
+        <Pressable
+          onPress={() => setAddOpen(true)}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="新增任务"
+          style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+        >
+          <Ionicons name="add" size={16} color={colors.onPrimary} />
+          <Text style={styles.addButtonText}>新增</Text>
         </Pressable>
       </View>
       {tasks.length === 0 ? (
         <View style={styles.empty}>
+          <Ionicons name="sunny-outline" size={28} color={colors.textMuted} />
           <Text style={styles.emptyTitle}>当天暂无代办事项</Text>
-          <Text style={styles.emptyHint}>点上方「+ 新增」添加任务</Text>
+          <Text style={styles.emptyHint}>点右上角「新增」添加任务</Text>
         </View>
       ) : (
         <View style={styles.list}>
@@ -58,53 +72,77 @@ export function DayTasksPanel({ date }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E7EB',
+    marginTop: 20,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
   },
-  addButton: {
-    height: 26,
-    borderRadius: 13,
-    paddingHorizontal: 10,
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
+  countPill: {
+    minWidth: 22,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addButtonText: {
+  countText: {
     fontSize: 12,
     fontWeight: '600',
-    color: ACCENT,
+    color: colors.textSecondary,
+    fontVariant: ['tabular-nums'],
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    height: 30,
+    borderRadius: radius.pill,
+    paddingLeft: 8,
+    paddingRight: 12,
+    backgroundColor: colors.primary,
+  },
+  addButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.onPrimary,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   list: {
     gap: 8,
   },
   empty: {
     alignItems: 'center',
-    paddingVertical: 20,
-    gap: 4,
+    paddingVertical: 28,
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
   },
   emptyTitle: {
     fontSize: 14,
-    color: '#6B7280',
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
   emptyHint: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textMuted,
   },
 });

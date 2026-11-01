@@ -1,5 +1,7 @@
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { MODULES } from '@/modules/registry';
+import { colors, radius, shadow } from '@/theme';
 
 /** 管理模块界面(框架占位):后续可在此启用/停用、排序模块 */
 export default function ModuleManagerScreen() {
@@ -7,15 +9,16 @@ export default function ModuleManagerScreen() {
     <FlatList
       data={MODULES}
       keyExtractor={(m) => m.id}
+      style={styles.root}
       contentContainerStyle={styles.list}
       ListHeaderComponent={
-        <Text style={styles.hint}>
-          当前展示所有已注册模块。启用 / 停用、排序等功能待实现。
-        </Text>
+        <Text style={styles.hint}>当前展示所有已注册模块。启用 / 停用、排序等功能待实现。</Text>
       }
       renderItem={({ item }) => (
         <View style={styles.row}>
-          <Text style={styles.rowIcon}>{item.icon}</Text>
+          <View style={styles.iconWrap}>
+            <Ionicons name={item.icon} size={20} color={colors.primary} />
+          </View>
           <View style={styles.rowBody}>
             <Text style={styles.rowTitle}>{item.title}</Text>
             <Text style={styles.rowId}>{item.id}</Text>
@@ -27,38 +30,45 @@ export default function ModuleManagerScreen() {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    backgroundColor: colors.bg,
+  },
   list: {
     padding: 16,
-    gap: 8,
+    gap: 10,
   },
   hint: {
     fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 8,
+    color: colors.textSecondary,
+    marginBottom: 6,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E7EB',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: 14,
+    ...shadow.card,
   },
-  rowIcon: {
-    fontSize: 24,
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowBody: {
     gap: 2,
   },
   rowTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#1F2937',
+    fontWeight: '600',
+    color: colors.text,
   },
   rowId: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: colors.textMuted,
   },
 });

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTasks } from '@/data/tasks-context';
+import { colors, radius } from '@/theme';
 import { DayTasksPanel } from './day-tasks-panel';
 import { MonthGrid } from './month-grid';
 import { WheelPickerModal } from './wheel-picker';
@@ -16,7 +18,7 @@ const YEAR_OPTIONS = Array.from(
 );
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => `${i + 1}月`);
 
-/** 日历模块主界面:最上方今天日期,中间年月滚轮切换,下方月历网格;点选日期后网格下方显示当日代办 */
+/** 日历模块主界面:顶部今天日期,年月切换栏,月历网格;点选日期后网格下方显示当日代办 */
 export function CalendarScreen() {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -56,6 +58,14 @@ export function CalendarScreen() {
     }
   };
 
+  /** 回到今天:视图切回本月并选中今天 */
+  const goToday = () => {
+    const now = new Date();
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+    setSelected(now);
+  };
+
   /** 是否同一天(忽略时分秒) */
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() &&
@@ -81,61 +91,97 @@ export function CalendarScreen() {
   const todayMonthIndex = today.getMonth();
   const todayDayIndex = today.getDate() - 1;
 
+  // 视图不在本月或没选中今天时,显示「回到今天」
+  const showGoToday =
+    viewYear !== today.getFullYear() ||
+    viewMonth !== today.getMonth() ||
+    !selected ||
+    !isSameDay(selected, today);
+
   return (
     <View style={styles.root}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <Text style={styles.today}>
-        今天是 {today.getFullYear()}年{today.getMonth() + 1}月{today.getDate()}日
-        {'  '}星期{WEEKDAYS[today.getDay()]}
-      </Text>
+        <View style={styles.header}>
+          <View style={styles.headerText}>
+            <Text style={styles.todayLabel}>今天</Text>
+            <Text style={styles.today}>
+              {today.getMonth() + 1}月{today.getDate()}日 星期{WEEKDAYS[today.getDay()]}
+            </Text>
+          </View>
+          {showGoToday && (
+            <Pressable
+              onPress={goToday}
+              hitSlop={6}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.todayButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.todayButtonText}>回到今天</Text>
+            </Pressable>
+          )}
+        </View>
 
-      <View style={styles.monthSwitcher}>
-        <Pressable onPress={goPrevMonth} style={styles.arrowButton} hitSlop={8}>
-          <Text style={styles.arrow}>‹</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setPickerOpen(true)}
-          hitSlop={4}
-          style={({ pressed }) => [styles.titleGroup, pressed && styles.pressed]}
-        >
-          <Text style={styles.monthTitle}>
-            {viewYear}年{viewMonth + 1}月
-          </Text>
-        </Pressable>
-        <Pressable onPress={goNextMonth} style={styles.arrowButton} hitSlop={8}>
-          <Text style={styles.arrow}>›</Text>
-        </Pressable>
-      </View>
+        <View style={styles.monthSwitcher}>
+          <Pressable
+            onPress={goPrevMonth}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="上个月"
+            style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
+          </Pressable>
+          <Pressable
+            onPress={() => setPickerOpen(true)}
+            hitSlop={4}
+            accessibilityRole="button"
+            accessibilityLabel={`选择日期,当前 ${viewYear}年${viewMonth + 1}月`}
+            style={({ pressed }) => [styles.titleGroup, pressed && styles.pressed]}
+          >
+            <Text style={styles.monthTitle}>
+              {viewYear}年{viewMonth + 1}月
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+          </Pressable>
+          <Pressable
+            onPress={goNextMonth}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="下个月"
+            style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}
+          >
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </Pressable>
+        </View>
 
-      <MonthGrid
-        year={viewYear}
-        month={viewMonth}
-        today={today}
-        selected={selected}
-        taskDays={taskDays}
-        onSelectDay={handleSelectDay}
-      />
+        <MonthGrid
+          year={viewYear}
+          month={viewMonth}
+          today={today}
+          selected={selected}
+          taskDays={taskDays}
+          onSelectDay={handleSelectDay}
+        />
 
-      {selected && <DayTasksPanel date={selected} />}
+        {selected && <DayTasksPanel date={selected} />}
 
-      <WheelPickerModal
-        visible={pickerOpen}
-        title="选择日期"
-        yearOptions={YEAR_OPTIONS}
-        monthOptions={MONTH_OPTIONS}
-        getDayCount={getDayCount}
-        yearValue={todayYearIndex}
-        monthValue={todayMonthIndex}
-        dayValue={todayDayIndex}
-        onConfirm={(yearIdx, monthIdx, dayIdx) => {
-          const y = FIRST_YEAR + yearIdx;
-          setViewYear(y);
-          setViewMonth(monthIdx);
-          setSelected(new Date(y, monthIdx, dayIdx + 1));
-          setPickerOpen(false);
-        }}
-        onCancel={() => setPickerOpen(false)}
-      />
+        <WheelPickerModal
+          visible={pickerOpen}
+          title="选择日期"
+          yearOptions={YEAR_OPTIONS}
+          monthOptions={MONTH_OPTIONS}
+          getDayCount={getDayCount}
+          yearValue={todayYearIndex}
+          monthValue={todayMonthIndex}
+          dayValue={todayDayIndex}
+          onConfirm={(yearIdx, monthIdx, dayIdx) => {
+            const y = FIRST_YEAR + yearIdx;
+            setViewYear(y);
+            setViewMonth(monthIdx);
+            setSelected(new Date(y, monthIdx, dayIdx + 1));
+            setPickerOpen(false);
+          }}
+          onCancel={() => setPickerOpen(false)}
+        />
       </ScrollView>
     </View>
   );
@@ -151,49 +197,71 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 32,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  headerText: {
+    gap: 2,
+  },
+  todayLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textMuted,
   },
   today: {
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  todayButton: {
+    height: 30,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  todayButtonText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 16,
+    color: colors.primary,
   },
   monthSwitcher: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   arrowButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  arrow: {
-    fontSize: 24,
-    lineHeight: 26,
-    fontWeight: '600',
-    color: '#374151',
   },
   titleGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    minWidth: 150,
+    height: 36,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
   },
   pressed: {
     opacity: 0.6,
   },
   monthTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
-    color: '#1F2937',
+    color: colors.text,
   },
 });

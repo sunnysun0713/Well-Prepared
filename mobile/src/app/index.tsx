@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ModuleBar } from '@/components/ModuleBar';
 import { MODULES, getModule } from '@/modules/registry';
+import { colors } from '@/theme';
 
 /** 主界面:顶部模块选择栏 + 当前激活模块的内容区 */
 export default function HomeScreen() {
@@ -27,6 +28,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.bg,
   },
 });

@@ -8,9 +8,11 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTasks } from '@/data/tasks-context';
 import { AddTaskModal } from '@/components/AddTaskModal';
 import { TaskCard } from '@/components/TaskCard';
+import { colors, radius, shadow } from '@/theme';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -28,7 +30,7 @@ function relativeLabel(date: Date, today: Date): string {
   return '';
 }
 
-/** 每日任务模块主界面:顶部日期栏(左右滑动/箭头切换日期)+ 当日任务卡片列表 */
+/** 每日任务模块主界面:顶部日期卡(左右滑动/箭头切换日期)+ 当日任务卡片列表 */
 export function DailyTasksScreen() {
   const [now, setNow] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -56,6 +58,9 @@ export function DailyTasksScreen() {
     [slide],
   );
 
+  /** 回到今天(浏览其他日期时显示入口) */
+  const goToday = useCallback(() => setSelectedDate(new Date()), []);
+
   // 左右滑动切日:仅当手势明显为横向时接管(纵向滚动不受影响)
   const panResponder = useMemo(
     () =>
@@ -82,45 +87,80 @@ export function DailyTasksScreen() {
     [getTasks],
   );
 
-  const isTodaySelected = relativeLabel(selectedDate, now) === '今天';
-  const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const label = relativeLabel(selectedDate, now);
+  const isTodaySelected = label === '今天';
+  const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const doneCount = isTodaySelected
+    ? tasks.filter((t) => t.endTime !== '' && t.endTime < nowHM).length
+    : 0;
 
   return (
     <View style={styles.root} {...panResponder.panHandlers}>
-      <View style={styles.dayHeader}>
-        <Pressable onPress={() => switchDay(-1)} style={styles.arrowButton} hitSlop={8}>
-          <Text style={styles.arrow}>‹</Text>
+      <View style={styles.dayCard}>
+        <Pressable
+          onPress={() => switchDay(-1)}
+          style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="前一天"
+        >
+          <Ionicons name="chevron-back" size={20} color={colors.textSecondary} />
         </Pressable>
+
         <View style={styles.dayTitleGroup}>
-          <Text style={styles.dayTitle}>
-            {label ? `${label} · ` : ''}
-            {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日 星期
-            {WEEKDAYS[selectedDate.getDay()]}
-          </Text>
-          <Text style={styles.dayFull}>
-            {selectedDate.getFullYear()}年{selectedDate.getMonth() + 1}月
-            {selectedDate.getDate()}日
-            {isTodaySelected
-              ? ` ${pad(now.getHours())}时${pad(now.getMinutes())}分${pad(now.getSeconds())}秒`
-              : ''}
-          </Text>
+          <View style={styles.dayTitleRow}>
+            {label ? (
+              <View style={[styles.relBadge, isTodaySelected && styles.relBadgeToday]}>
+                <Text style={[styles.relBadgeText, isTodaySelected && styles.relBadgeTextToday]}>
+                  {label}
+                </Text>
+              </View>
+            ) : null}
+            <Text style={styles.dayTitle}>
+              {selectedDate.getMonth() + 1}月{selectedDate.getDate()}日
+            </Text>
+            <Text style={styles.weekday}>周{WEEKDAYS[selectedDate.getDay()]}</Text>
+          </View>
+          {isTodaySelected ? (
+            <Text style={styles.clock}>
+              {pad(now.getHours())}:{pad(now.getMinutes())}
+              <Text style={styles.clockSec}>:{pad(now.getSeconds())}</Text>
+            </Text>
+          ) : (
+            <Pressable onPress={goToday} hitSlop={6} accessibilityRole="button">
+              <Text style={styles.backToday}>{selectedDate.getFullYear()}年 · 回到今天</Text>
+            </Pressable>
+          )}
         </View>
-        <Pressable onPress={() => switchDay(1)} style={styles.arrowButton} hitSlop={8}>
-          <Text style={styles.arrow}>›</Text>
+
+        <Pressable
+          onPress={() => switchDay(1)}
+          style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="后一天"
+        >
+          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </Pressable>
       </View>
-      <Text style={styles.hint}>左右滑动切换日期</Text>
 
       {todayFavoriteCount > 0 && (
         <View style={styles.urgentBar}>
-          <Text style={styles.urgentText}>⭐ 今日紧急任务 {todayFavoriteCount} 项</Text>
+          <Ionicons name="star" size={14} color={colors.warning} />
+          <Text style={styles.urgentText}>今日紧急任务 {todayFavoriteCount} 项</Text>
         </View>
       )}
 
       <Animated.View style={[styles.body, { transform: [{ translateX: slide }] }]}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-          <Text style={styles.sectionLabel}>当日任务({tasks.length})</Text>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionLabel}>当日任务</Text>
+            <Text style={styles.sectionCount}>
+              {isTodaySelected && tasks.length > 0
+                ? `已过 ${doneCount} / 共 ${tasks.length}`
+                : `共 ${tasks.length} 项`}
+            </Text>
+          </View>
           <View style={styles.list}>
             {tasks.map((t) => (
               <TaskCard
@@ -131,15 +171,25 @@ export function DailyTasksScreen() {
             ))}
             {tasks.length === 0 && (
               <View style={styles.empty}>
-                <Text style={styles.emptyText}>这一天没有安排</Text>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="sunny-outline" size={28} color={colors.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>这一天没有安排</Text>
+                <Text style={styles.emptyHint}>点右下角 + 添加任务,左右滑动切换日期</Text>
               </View>
             )}
           </View>
         </ScrollView>
       </Animated.View>
 
-      <Pressable style={styles.fab} onPress={() => setAddOpen(true)} hitSlop={8}>
-        <Text style={styles.fabText}>+</Text>
+      <Pressable
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        onPress={() => setAddOpen(true)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="新增任务"
+      >
+        <Ionicons name="add" size={30} color={colors.onPrimary} />
       </Pressable>
 
       <AddTaskModal visible={addOpen} date={selectedDate} onClose={() => setAddOpen(false)} />
@@ -151,64 +201,105 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  dayHeader: {
+  dayCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    marginHorizontal: 16,
+    marginTop: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    ...shadow.card,
   },
   arrowButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
+    width: 38,
+    height: 38,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  arrow: {
-    fontSize: 24,
-    lineHeight: 26,
-    fontWeight: '600',
-    color: '#374151',
+  pressed: {
+    opacity: 0.6,
   },
   dayTitleGroup: {
     flex: 1,
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
+  },
+  dayTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  relBadge: {
+    height: 20,
+    paddingHorizontal: 7,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    justifyContent: 'center',
+  },
+  relBadgeToday: {
+    backgroundColor: colors.primarySoft,
+  },
+  relBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  relBadgeTextToday: {
+    color: colors.primary,
   },
   dayTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
   },
-  dayFull: {
-    fontSize: 13,
-    color: '#6B7280',
+  weekday: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  clock: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.primary,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
   },
-  hint: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 6,
+  clockSec: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
+  backToday: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.primary,
+    paddingVertical: 4,
   },
   urgentBar: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    marginHorizontal: 16,
+    marginTop: 10,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1,
+    borderColor: colors.warningBorder,
   },
   urgentText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#B45309',
+    color: colors.warningText,
   },
   body: {
     flex: 1,
@@ -218,45 +309,66 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 88,
+    paddingTop: 16,
+    paddingBottom: 96,
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  sectionCount: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  },
+  list: {
+    gap: 10,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 6,
+  },
+  emptyIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  emptyHint: {
+    fontSize: 12,
+    color: colors.textMuted,
   },
   fab: {
     position: 'absolute',
     right: 20,
     bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#4F46E5',
+    width: 58,
+    height: 58,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    ...shadow.raised,
   },
-  fabText: {
-    fontSize: 30,
-    lineHeight: 34,
-    color: '#FFFFFF',
-    fontWeight: '400',
-  },
-  sectionLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  list: {
-    gap: 8,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
+  fabPressed: {
+    backgroundColor: colors.primaryPressed,
+    transform: [{ scale: 0.96 }],
   },
 });

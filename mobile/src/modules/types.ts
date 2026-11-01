@@ -1,4 +1,8 @@
-import type { ComponentType } from 'react';
+import type { ComponentProps, ComponentType } from 'react';
+import type { Ionicons } from '@expo/vector-icons';
+
+/** Ionicons 图标名 */
+export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 /**
  * 功能模块的完整定义。
@@ -9,8 +13,8 @@ export interface AppModule {
   id: string;
   /** 顶部模块栏显示的名称 */
   title: string;
-  /** 顶部模块栏显示的图标(emoji) */
-  icon: string;
+  /** 顶部模块栏显示的图标(Ionicons 名称) */
+  icon: IconName;
   /** 模块主界面组件 */
   component: ComponentType;
 }

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
+import { colors, radius, shadow } from '@/theme';
 import { TaskSettingsModal } from './TaskSettingsModal';
 import { TimeRangeModal } from './TimeRangeModal';
 
@@ -11,44 +13,81 @@ interface Props {
   past: boolean;
 }
 
-/** 任务卡片:时间上下排列 + 标题/备注 */
+/** 任务卡片:左侧时间列(点按改时间)+ 标题/备注 + 提醒标记 + 设置/收藏 */
 export function TaskCard({ task, past }: Props) {
   const { updateTask } = useTasks();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const hasTime = Boolean(task.startTime || task.endTime);
+  const hasAlarm = task.remindAdvanceMinutes != null;
+  const hasSms = task.smsRemindAdvanceMinutes != null;
 
   return (
-    <View style={[styles.card, past && styles.past]}>
-      <View style={styles.main}>
-        {hasTime && (
-          <Pressable onPress={() => setTimeOpen(true)} hitSlop={6}>
-            <View style={styles.timeCol}>
-              <Text style={styles.time}>{task.startTime || '—'}</Text>
-              <Text style={styles.timeEnd}>{task.endTime || '—'}</Text>
-            </View>
-          </Pressable>
+    <View style={[styles.card, task.favorite && styles.cardFavorite, past && styles.past]}>
+      {hasTime && (
+        <Pressable
+          onPress={() => setTimeOpen(true)}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel={`修改时间,当前 ${task.startTime || '未设'} 至 ${task.endTime || '未设'}`}
+          style={({ pressed }) => [styles.timeCol, pressed && styles.pressed]}
+        >
+          <Text style={styles.time}>{task.startTime || '—'}</Text>
+          <Text style={styles.timeEnd}>{task.endTime || '—'}</Text>
+        </Pressable>
+      )}
+
+      <View style={styles.body}>
+        <Text style={styles.title} numberOfLines={2}>
+          {task.title}
+        </Text>
+        {task.note ? (
+          <Text style={styles.note} numberOfLines={2}>
+            {task.note}
+          </Text>
+        ) : null}
+        {(hasAlarm || hasSms) && (
+          <View style={styles.badges}>
+            {hasAlarm && (
+              <View style={styles.badge}>
+                <Ionicons name="alarm-outline" size={12} color={colors.primary} />
+                <Text style={styles.badgeText}>闹钟</Text>
+              </View>
+            )}
+            {hasSms && (
+              <View style={styles.badge}>
+                <Ionicons name="mail" size={11} color={colors.primary} />
+                <Text style={styles.badgeText}>短信</Text>
+              </View>
+            )}
+          </View>
         )}
-        <View style={styles.body}>
-          <Text style={styles.title}>{task.title}</Text>
-          {task.note ? <Text style={styles.note}>{task.note}</Text> : null}
-        </View>
       </View>
 
-      {task.remindAdvanceMinutes != null && <Text style={styles.bell}>🔔</Text>}
-      {task.smsRemindAdvanceMinutes != null && <Text style={styles.smsBell}>✉️</Text>}
-      <Pressable onPress={() => setSettingsOpen(true)} hitSlop={8}>
-        <Text style={styles.gear}>⚙️</Text>
-      </Pressable>
-      <Pressable
-        onPress={() => updateTask(task.id, { favorite: !task.favorite })}
-        hitSlop={8}
-        accessibilityLabel={task.favorite ? '取消收藏' : '收藏为紧急任务'}
-      >
-        <Text style={[styles.favorite, task.favorite && styles.favoriteOn]}>
-          {task.favorite ? '★' : '☆'}
-        </Text>
-      </Pressable>
+      <View style={styles.actions}>
+        <Pressable
+          onPress={() => setSettingsOpen(true)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="任务设置"
+          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+        >
+          <Ionicons name="options-outline" size={18} color={colors.textMuted} />
+        </Pressable>
+        <Pressable
+          onPress={() => updateTask(task.id, { favorite: !task.favorite })}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={task.favorite ? '取消收藏' : '收藏为紧急任务'}
+          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+        >
+          <Ionicons
+            name={task.favorite ? 'star' : 'star-outline'}
+            size={19}
+            color={task.favorite ? colors.warning : colors.borderStrong}
+          />
+        </Pressable>
+      </View>
 
       <TimeRangeModal
         visible={timeOpen}
@@ -74,66 +113,87 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 14,
+    borderColor: colors.border,
+    paddingLeft: 14,
+    paddingRight: 8,
     paddingVertical: 12,
+    ...shadow.card,
+  },
+  cardFavorite: {
+    borderColor: colors.warningBorder,
+    backgroundColor: '#FFFDF7',
   },
   past: {
     opacity: 0.5,
   },
-  main: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
   timeCol: {
-    minWidth: 48,
-    gap: 1,
+    minWidth: 52,
+    paddingVertical: 4,
+    paddingRight: 12,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: colors.border,
+    gap: 2,
   },
   time: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4F46E5',
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primary,
     fontVariant: ['tabular-nums'],
   },
   timeEnd: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textMuted,
     fontVariant: ['tabular-nums'],
   },
   body: {
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   title: {
     fontSize: 15,
-    fontWeight: '500',
-    color: '#1F2937',
+    fontWeight: '600',
+    color: colors.text,
   },
   note: {
     fontSize: 12,
-    color: '#9CA3AF',
+    lineHeight: 17,
+    color: colors.textSecondary,
   },
-  bell: {
-    fontSize: 14,
+  badges: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 2,
   },
-  smsBell: {
-    fontSize: 14,
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 20,
+    paddingHorizontal: 7,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primarySoft,
   },
-  gear: {
-    fontSize: 16,
-    color: '#6B7280',
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.primary,
   },
-  favorite: {
-    fontSize: 18,
-    color: '#D1D5DB',
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  favoriteOn: {
-    color: '#F59E0B',
+  iconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.55,
   },
 });
