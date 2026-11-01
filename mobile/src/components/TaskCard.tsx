@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { colors, radius, shadow } from '@/theme';
-import { TaskSettingsModal } from './TaskSettingsModal';
+import { AddTaskModal } from './AddTaskModal';
 import { TimeRangeModal } from './TimeRangeModal';
 
 interface Props {
@@ -16,7 +16,7 @@ interface Props {
 /** 任务卡片:左侧时间列(点按改时间)+ 标题/备注 + 提醒标记 + 设置/收藏 */
 export function TaskCard({ task, past }: Props) {
   const { updateTask } = useTasks();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const hasTime = Boolean(task.startTime || task.endTime);
   const hasAlarm = task.remindAdvanceMinutes != null;
@@ -66,7 +66,7 @@ export function TaskCard({ task, past }: Props) {
 
       <View style={styles.actions}>
         <Pressable
-          onPress={() => setSettingsOpen(true)}
+          onPress={() => setAddOpen(true)}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="任务设置"
@@ -100,11 +100,7 @@ export function TaskCard({ task, past }: Props) {
           setTimeOpen(false);
         }}
       />
-      <TaskSettingsModal
-        visible={settingsOpen}
-        task={task}
-        onClose={() => setSettingsOpen(false)}
-      />
+      <AddTaskModal visible={addOpen} editTask={task} onClose={() => setAddOpen(false)} />
     </View>
   );
 }

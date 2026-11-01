@@ -22,14 +22,16 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 interface Props {
   visible: boolean;
-  /** 新任务所属日期 */
-  date: Date;
+  /** 新增模式:新任务所属日期;编辑模式(传 editTask)时忽略 */
+  date?: Date;
+  /** 编辑模式:要覆盖保存的任务;不传为新增 */
+  editTask?: Task;
   onClose: () => void;
 }
 
-/** 新增任务弹窗:任务名 / 备注 / 时间 / 闹钟提醒 */
-export function AddTaskModal({ visible, date, onClose }: Props) {
-  const { addTask } = useTasks();
+/** 新增/编辑任务弹窗:任务名 / 备注 / 时间 / 闹钟提醒 / 短信提醒 */
+export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
+  const { addTask, updateTask } = useTasks();
   const [prevVisible, setPrevVisible] = useState(visible);
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -44,19 +46,19 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
   const [timeOpen, setTimeOpen] = useState(false);
   const [error, setError] = useState('');
 
-  // 打开弹窗时重置表单(渲染期间派生,避免 effect 内 setState)
+  // 打开弹窗时重置表单:编辑模式预填任务当前值,新增模式用默认值(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
-      setTitle('');
-      setNote('');
-      setStartTime('09:00');
-      setEndTime('09:30');
-      setRemind(null);
-      setRemindSound(DEFAULT_REMINDER_SOUND);
+      setTitle(editTask?.title ?? '');
+      setNote(editTask?.note ?? '');
+      setStartTime(editTask?.startTime ?? '09:00');
+      setEndTime(editTask?.endTime ?? '09:30');
+      setRemind(editTask?.remindAdvanceMinutes ?? null);
+      setRemindSound(editTask?.remindSound ?? DEFAULT_REMINDER_SOUND);
       setReminderOpen(false);
-      setSmsRemind(null);
-      setSmsRemindSound(DEFAULT_REMINDER_SOUND);
+      setSmsRemind(editTask?.smsRemindAdvanceMinutes ?? null);
+      setSmsRemindSound(editTask?.smsRemindSound ?? DEFAULT_REMINDER_SOUND);
       setSmsReminderOpen(false);
       setTimeOpen(false);
       setError('');
@@ -81,8 +83,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
         return;
       }
     }
-    const task: Task = {
-      id: `${dateKeyOf(date)}-t${Date.now()}`,
+    const fields = {
       title: t,
       startTime,
       endTime,
@@ -92,7 +93,17 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
       smsRemindAdvanceMinutes: smsRemind ?? undefined,
       smsRemindSound: smsRemind != null ? smsRemindSound : undefined,
     };
-    addTask(date, task);
+    if (editTask) {
+      // 编辑模式:覆盖保存原任务,日期与收藏状态保持不变
+      updateTask(editTask.id, fields);
+    } else {
+      if (!date) {
+        setError('缺少任务日期');
+        return;
+      }
+      const task: Task = { id: `${dateKeyOf(date)}-t${Date.now()}`, ...fields };
+      addTask(date, task);
+    }
     onClose();
   };
 
@@ -100,7 +111,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>新增任务</Text>
+          <Text style={styles.title}>{editTask ? '任务设置' : '新增任务'}</Text>
 
           <ScrollView
             style={styles.body}
@@ -190,7 +201,7 @@ export function AddTaskModal({ visible, date, onClose }: Props) {
               <Text style={styles.cancelText}>取消</Text>
             </Pressable>
             <Pressable style={[styles.button, styles.confirmButton]} onPress={confirm}>
-              <Text style={styles.confirmText}>添加</Text>
+              <Text style={styles.confirmText}>{editTask ? '保存' : '添加'}</Text>
             </Pressable>
           </View>
           </ScrollView>
