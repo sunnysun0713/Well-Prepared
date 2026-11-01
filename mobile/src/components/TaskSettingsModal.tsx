@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Switch,
@@ -105,10 +104,8 @@ export function TaskSettingsModal({ visible, task, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.backdrop}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      {/* behavior='height' 在安卓 Modal 内会挤压弹窗并渲染黑块,统一用 padding */}
+      <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
         <Pressable style={styles.backdrop} onPress={onClose}>
           <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>任务设置</Text>
@@ -306,7 +303,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   input: {
-    height: 36,
+    height: 44,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
