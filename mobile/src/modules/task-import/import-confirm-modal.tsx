@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { commitImport, draftsOf } from '@/ai/import';
@@ -29,6 +30,9 @@ interface Props {
 export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props) {
   const { addTask } = useTasks();
   const { settings } = useAiSettings();
+  const { width: windowWidth } = useWindowDimensions();
+  // 桌面/平板用 520 宽,窄屏手机按 92% 收缩,避免横向溢出
+  const cardWidth = Math.min(520, windowWidth * 0.92);
   const [prevVisible, setPrevVisible] = useState(visible);
   const [items, setItems] = useState<ImportDraft[]>([]);
   const [error, setError] = useState('');
@@ -80,7 +84,10 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[styles.card, { width: cardWidth }]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <Text style={styles.title}>确认导入({items.length} 条)</Text>
 
             {items.length > 0 ? (
@@ -192,7 +199,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    width: 330,
     maxHeight: '85%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
