@@ -80,7 +80,7 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        style={styles.backdrop}
+        style={styles.keyboardWrap}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable style={styles.backdrop} onPress={onClose}>
@@ -192,6 +192,11 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
 }
 
 const styles = StyleSheet.create({
+  // KeyboardAvoidingView 只负责让弹窗随键盘上移,遮罩统一由内层 Pressable 提供,
+  // 避免两层 rgba 叠加导致遮罩比「任务设置」更深
+  keyboardWrap: {
+    flex: 1,
+  },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
