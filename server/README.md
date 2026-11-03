@@ -29,4 +29,29 @@ curl http://localhost:3000/health
 3. **ECS**:与 RDS/DCS 同 VPC,安装 Node.js 24 → `npm ci && npm run build` → `node dist/index.js`(建议用 systemd 或 pm2 守护)→ 安全组放行 3000 端口(仅 App 演示需要)。
 4. 修改 `.env` 为内网地址(见 `.env.example` 注释),重启后访问 `/health` 验证 `db/redis` 均为 `up`。
 
-> 注意:App 端 `SYNC_BASE_URL`(`mobile/src/config.ts`)填入 `http://<ECS公网IP>:3000` 后再构建。
+### 部署产物
+
+- `Dockerfile` / `.dockerignore`:ECS 上可直接 `docker build -t nezha-sync . && docker run -d --env-file .env -p 3000:3000 nezha-sync`
+- `deploy/nezha-sync.service`:不使用 Docker 时的 systemd 守护单元
+- `deploy/nginx.conf.example`:HTTPS 反向代理示例(Nginx + 华为云 SSL 证书)
+
+### HTTPS 是必须的
+
+Android 9+ 的 release 包默认禁止明文 HTTP。后端如果只暴露 `http://IP:3000`,App 的同步请求会被系统拦截,而且失败是静默的。
+
+推荐路径:域名解析到 ECS → 申请华为云 SSL 证书 → 按 `deploy/nginx.conf.example` 配 Nginx → App 填 `https://域名`。
+
+临时演示包才可以考虑在 `expo-build-properties` 里打开 `usesCleartextTraffic`,不要用于正式提交。
+
+### App 端配置
+
+`mobile/src/config.ts` 的 `SYNC_BASE_URL` 支持构建期环境变量注入,不必改源码:
+
+```bash
+cd mobile
+EXPO_PUBLIC_SYNC_BASE_URL=https://sync.example.com npx eas-cli@latest build --platform android --profile preview
+```
+
+未设置时为空串,App 保持纯本地运行。
+
+> 验收:真机改一条任务 → RDS `task_states` 表出现该设备记录;`GET /sync/:deviceId` 返回最新状态。

@@ -1,0 +1,24 @@
+# NeZha 同步服务 systemd 单元示例(不用 Docker 时直接跑 node dist/index.js)
+# 用法:
+#   1. 代码放到 /opt/nezha-sync,执行 npm ci && npm run build
+#   2. 把本文件复制到 /etc/systemd/system/nezha-sync.service
+#   3. 在 /opt/nezha-sync/.env 填入 RDS/DCS 内网地址(参考 .env.example)
+#   4. systemctl daemon-reload && systemctl enable --now nezha-sync
+#   5. systemctl status nezha-sync && curl http://127.0.0.1:3000/health
+
+[Unit]
+Description=NeZha sync service (Express + RDS + DCS)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/nezha-sync
+EnvironmentFile=/opt/nezha-sync/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=3
+User=nezha
+Group=nezha
+
+[Install]
+WantedBy=multi-user.target
