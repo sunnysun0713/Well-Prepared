@@ -26,6 +26,14 @@
             "./assets/sounds/gentle.wav"
           ]
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "experiments": {
