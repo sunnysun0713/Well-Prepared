@@ -16,6 +16,7 @@ export function AiSettingsModal({ visible, onClose }: Props) {
   const [prevVisible, setPrevVisible] = useState(visible);
   const [providerId, setProviderId] = useState(settings.providerId);
   const [apiKey, setApiKey] = useState(settings.apiKey);
+  const [customModel, setCustomModel] = useState(settings.customModel);
 
   // 打开弹窗时重置为已保存设置(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
@@ -23,12 +24,20 @@ export function AiSettingsModal({ visible, onClose }: Props) {
     if (visible) {
       setProviderId(settings.providerId);
       setApiKey(settings.apiKey);
+      setCustomModel(settings.customModel);
     }
   }
 
+  const activeProvider = PROVIDERS.find((p) => p.id === providerId) ?? PROVIDERS[0];
+
   const save = () => {
     // 展开已有设置,避免覆盖导入模式、模板等其它字段
-    updateSettings({ ...settings, providerId, apiKey: apiKey.trim() });
+    updateSettings({
+      ...settings,
+      providerId,
+      apiKey: apiKey.trim(),
+      customModel: customModel.trim(),
+    });
     onClose();
   };
 
@@ -53,6 +62,24 @@ export function AiSettingsModal({ visible, onClose }: Props) {
               );
             })}
           </View>
+
+          {activeProvider.customModel ? (
+            <>
+              <Text style={styles.label}>模型名称</Text>
+              <TextInput
+                value={customModel}
+                onChangeText={setCustomModel}
+                style={styles.input}
+                placeholder="留空则使用默认视觉模型"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {activeProvider.modelHint ? (
+                <Text style={styles.note}>{activeProvider.modelHint}</Text>
+              ) : null}
+            </>
+          ) : null}
 
           <Text style={styles.label}>API Key</Text>
           <TextInput

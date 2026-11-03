@@ -36,6 +36,10 @@ export interface VisionProvider {
   id: string;
   /** 设置界面展示名 */
   label: string;
+  /** 是否允许用户在 AI 设置里自定义模型名(服务商模型名随控制台变化时使用) */
+  customModel?: boolean;
+  /** 自定义模型名输入框下方的提示文案 */
+  modelHint?: string;
   /** prompt 由当前模板提供,不同模板可给出不同提取指令 */
   extractTasks(imageBase64: string, apiKey: string, prompt: string): Promise<RawTaskItem[]>;
 }

@@ -6,11 +6,15 @@ import type { RawTaskItem, VisionProvider } from './types';
  * chat/completions 协议与 image_url 图片输入,只差地址与模型名。
  */
 
-interface CompatConfig {
+export interface CompatConfig {
   id: string;
   label: string;
   baseUrl: string;
   model: string;
+  /** 是否允许用户在 AI 设置里覆盖模型名 */
+  customModel?: boolean;
+  /** 自定义模型名输入框下方的提示文案 */
+  modelHint?: string;
 }
 
 interface CompatResponse {
@@ -21,6 +25,8 @@ export function createOpenAICompatProvider(config: CompatConfig): VisionProvider
   return {
     id: config.id,
     label: config.label,
+    customModel: config.customModel,
+    modelHint: config.modelHint,
     async extractTasks(
       imageBase64: string,
       apiKey: string,

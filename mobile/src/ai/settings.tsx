@@ -17,6 +17,8 @@ import { PROVIDERS } from './providers';
 export interface AiSettings {
   providerId: string;
   apiKey: string;
+  /** 用户自定义的模型名;空串表示使用服务商默认模型(仅 customModel 为 true 的服务商生效) */
+  customModel: string;
   /** true = 提取后直接写入任务;false = 弹确认列表由用户勾选 */
   autoImport: boolean;
   /** 提取模板列表(内置模板与自定义模板都在这里,可增删) */
@@ -41,8 +43,10 @@ function defaultTemplates(): ExtractionPreset[] {
 }
 
 const DEFAULT_SETTINGS: AiSettings = {
-  providerId: 'deepseek',
+  // 比赛作品默认走华为云 MaaS,突出全链路华为云;用户可在设置中切换
+  providerId: 'huawei-maas',
   apiKey: '',
+  customModel: '',
   autoImport: false,
   templates: defaultTemplates(),
   presetId: DEFAULT_PRESET_ID,
@@ -138,6 +142,8 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
                   ? parsed.providerId
                   : DEFAULT_SETTINGS.providerId,
               apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : '',
+              customModel:
+                typeof parsed.customModel === 'string' ? parsed.customModel : '',
               autoImport:
                 typeof parsed.autoImport === 'boolean' ? parsed.autoImport : DEFAULT_SETTINGS.autoImport,
               templates,

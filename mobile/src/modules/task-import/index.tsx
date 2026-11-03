@@ -117,7 +117,7 @@ export function TaskImportScreen() {
     setImportNote('');
     setExtracting(true);
     try {
-      const provider = getProvider(settings.providerId);
+      const provider = getProvider(settings.providerId, settings.customModel);
       if (!settings.apiKey) {
         throw new Error('请先在右上角设置中填写 API Key');
       }
