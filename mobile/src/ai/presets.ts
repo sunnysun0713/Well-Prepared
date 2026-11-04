@@ -12,9 +12,18 @@ export interface ExtractionPreset {
   prompt: string;
 }
 
+/** 旧版输出格式(用于迁移已保存到本地设置里的模板提示词) */
+export const LEGACY_OUTPUT_RULES = `只输出 JSON,格式:
+{"tasks":[{"title":"简短任务名","date":"YYYY-MM-DD,或 今天/明天/后天/星期X,无法判断则留空","start":"24小时制 HH:mm,无则留空","end":"24小时制 HH:mm,无则留空","note":"备注/地点,无则省略"}]}
+要求:图片中没有任务时 tasks 为空数组;不要输出 JSON 以外的任何内容。`;
+
 /** 所有模板共用的输出格式约束(自定义模板保存时自动追加) */
 export const OUTPUT_RULES = `只输出 JSON,格式:
-{"tasks":[{"title":"简短任务名","date":"YYYY-MM-DD,或 今天/明天/后天/星期X,无法判断则留空","start":"24小时制 HH:mm,无则留空","end":"24小时制 HH:mm,无则留空","note":"备注/地点,无则省略"}]}
+{"tasks":[{"title":"简短任务名","date":"开始日期,YYYY-MM-DD,或 今天/明天/后天/星期X,无法判断则留空","endDate":"结束日期,YYYY-MM-DD,或 今天/明天/后天/星期X;只有跨多天任务才填写,单日任务留空","start":"24小时制 HH:mm,无则留空","end":"24小时制 HH:mm,无则留空","note":"备注/地点,无则省略"}]}
+跨多天判断规则:
+- 同一个事项跨多天(如「11月5日-10日」「周三到周五」「出差三天」「期间」)只输出一条:date 填开始日,endDate 填结束日,不要按天拆成多条;
+- 只有结束日与开始日不同才算跨多天;单日任务(包括不是今天的任务)endDate 留空;
+- 无法确定结束日时 endDate 留空。
 要求:图片中没有任务时 tasks 为空数组;不要输出 JSON 以外的任何内容。`;
 
 /** 通用提取提示词:自定义模板不填规则时使用 */

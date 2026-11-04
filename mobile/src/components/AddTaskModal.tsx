@@ -123,7 +123,13 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
       setError('请输入任务名');
       return;
     }
-    if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
+    // 允许整段任务没有具体时刻(如 AI 从「11月5日-10日出差」提取),有值时才校验格式
+    const hasStartTime = startTime !== '';
+    const hasEndTime = endTime !== '';
+    if (
+      (hasStartTime && !TIME_RE.test(startTime)) ||
+      (hasEndTime && !TIME_RE.test(endTime))
+    ) {
       setError('时间格式应为 HH:mm');
       return;
     }
@@ -134,27 +140,29 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
         setError('请设置开始和结束日期');
         return;
       }
-      const [sh, sm] = startTime.split(':').map(Number);
-      const [eh, em] = endTime.split(':').map(Number);
-      const startAt = new Date(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
-        sh,
-        sm,
-      );
-      const endAt = new Date(
-        endDate.getFullYear(),
-        endDate.getMonth(),
-        endDate.getDate(),
-        eh,
-        em,
-      );
-      if (endAt.getTime() <= startAt.getTime()) {
-        setError('长时任务的结束时间需晚于开始时间');
-        return;
+      if (hasStartTime && hasEndTime) {
+        const [sh, sm] = startTime.split(':').map(Number);
+        const [eh, em] = endTime.split(':').map(Number);
+        const startAt = new Date(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate(),
+          sh,
+          sm,
+        );
+        const endAt = new Date(
+          endDate.getFullYear(),
+          endDate.getMonth(),
+          endDate.getDate(),
+          eh,
+          em,
+        );
+        if (endAt.getTime() <= startAt.getTime()) {
+          setError('长时任务的结束时间需晚于开始时间');
+          return;
+        }
       }
-    } else if (endTime <= startTime) {
+    } else if (hasStartTime && hasEndTime && endTime <= startTime) {
       setError('结束时间需晚于起始时间');
       return;
     }
@@ -273,7 +281,9 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
           <Text style={styles.label}>时间</Text>
           <Pressable style={styles.timeButton} onPress={() => setTimeOpen(true)}>
             <Text style={styles.timeButtonText}>
-              {startTime} ~ {endTime}
+              {startTime || endTime
+                ? `${startTime || '—'} ~ ${endTime || '—'}`
+                : '未设置时间'}
             </Text>
             <Text style={styles.timeButtonHint}>点击设置</Text>
           </Pressable>

@@ -3,8 +3,10 @@
 /** 归一化后的提取任务:日期与时间均为应用内部格式 */
 export interface ExtractedTask {
   title: string;
-  /** 任务所属日期 'YYYY-MM-DD'(与数据层 dateKey 一致) */
+  /** 任务所属日期 'YYYY-MM-DD'(与数据层 dateKey 一致);跨多天时为开始日期 */
   dateKey: string;
+  /** 跨多天任务的结束日期 'YYYY-MM-DD';单日任务为空 */
+  endDateKey?: string;
   /** 起始时间 'HH:mm';图中没有时间信息时为空串 */
   startTime: string;
   /** 结束时间 'HH:mm';图中没有时间信息时为空串 */
@@ -17,6 +19,8 @@ export interface ImportDraft {
   selected: boolean;
   title: string;
   dateText: string;
+  /** 结束日期文案;留空表示单日任务 */
+  endDateText: string;
   startText: string;
   endText: string;
   note: string;
@@ -26,6 +30,8 @@ export interface ImportDraft {
 export interface RawTaskItem {
   title?: unknown;
   date?: unknown;
+  /** 结束日期;仅跨多天任务提供 */
+  endDate?: unknown;
   start?: unknown;
   end?: unknown;
   note?: unknown;

@@ -1,5 +1,5 @@
-import type { Task } from '@/data/tasks';
-import { dateLabel, normalizeDate, normalizeTime } from './parse';
+import { dayIndex, type Task } from '@/data/tasks';
+import { dateLabel, normalizeDate, normalizeTime, tryNormalizeDate } from './parse';
 import type { ExtractedTask, ImportDraft } from './types';
 
 /** 导入执行:把提取/编辑后的条目归一化并写入任务数据层。 */
@@ -10,6 +10,7 @@ export function draftsOf(tasks: ExtractedTask[], today: Date): ImportDraft[] {
     selected: true,
     title: t.title,
     dateText: dateLabel(t.dateKey, today),
+    endDateText: t.endDateKey ? dateLabel(t.endDateKey, today) : '',
     startText: t.startTime,
     endText: t.endTime,
     note: t.note ?? '',
@@ -38,23 +39,40 @@ export function buildImportTasks(
     if (!it.selected) return;
     const title = it.title.trim();
     if (!title) return;
-    const start = normalizeTime(it.startText);
+    let start = normalizeTime(it.startText);
     let end = normalizeTime(it.endText);
-    // 只有起始时间有效时保留;结束时间不晚于起始时间时丢弃
-    if (!start) end = '';
-    else if (end && end <= start) end = '';
-    const key = normalizeDate(it.dateText, today);
-    const [y, m, d] = key.split('-').map(Number);
+    let startKey = normalizeDate(it.dateText, today);
+    let endKey = it.endDateText.trim() ? tryNormalizeDate(it.endDateText, today) : null;
+    // 结束日早于开始日时交换;同一天视为单日任务
+    if (endKey) {
+      const startIndex = dayIndex(startKey);
+      const endIndex = dayIndex(endKey);
+      if (startIndex != null && endIndex != null && endIndex < startIndex) {
+        [startKey, endKey] = [endKey, startKey];
+      } else if (startIndex != null && endIndex === startIndex) {
+        endKey = null;
+      }
+    }
+    const isSpan = endKey != null;
+    // 单日任务:结束时间不晚于起始时间时丢弃;跨多天任务保留原时刻(可没有时刻)
+    if (!isSpan) {
+      if (!start) end = '';
+      else if (end && end <= start) end = '';
+    }
+    const [y, m, d] = startKey.split('-').map(Number);
     const remindMinutes = reminders?.remindAdvanceMinutes ?? undefined;
     const smsMinutes = reminders?.smsRemindAdvanceMinutes ?? undefined;
     out.push({
       date: new Date(y, m - 1, d),
       task: {
-        id: `${key}-t${Date.now()}-${index}`,
+        id: `${startKey}-t${Date.now()}-${index}`,
         title,
         startTime: start,
         endTime: end,
         note: it.note.trim() || undefined,
+        ...(isSpan
+          ? { kind: 'span' as const, startDateKey: startKey, endDateKey: endKey as string }
+          : {}),
         remindAdvanceMinutes: remindMinutes,
         remindSound: remindMinutes != null ? reminders?.remindSound : undefined,
         smsRemindAdvanceMinutes: smsMinutes,

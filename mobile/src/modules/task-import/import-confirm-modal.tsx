@@ -129,9 +129,19 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
                           value={it.dateText}
                           onChangeText={(v) => patchItem(index, { dateText: v })}
                           style={styles.dateInput}
-                          placeholder="今天"
+                          placeholder="开始日期"
                           placeholderTextColor="#9CA3AF"
                         />
+                        <Text style={styles.dash}>~</Text>
+                        <TextInput
+                          value={it.endDateText}
+                          onChangeText={(v) => patchItem(index, { endDateText: v })}
+                          style={styles.dateInput}
+                          placeholder="结束日期(可空)"
+                          placeholderTextColor="#9CA3AF"
+                        />
+                      </View>
+                      <View style={styles.metaRow}>
                         <TextInput
                           value={it.startText}
                           onChangeText={(v) => patchItem(index, { startText: v })}

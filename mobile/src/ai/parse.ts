@@ -1,4 +1,4 @@
-import { dateKeyOf } from '@/data/tasks';
+import { dateKeyOf, dayIndex } from '@/data/tasks';
 import type { ExtractedTask, RawTaskItem } from './types';
 
 /** AI 输出归一化:纯函数,把模型返回的相对表达(明天、下午3点)转成应用内部格式。 */
@@ -31,11 +31,11 @@ const WEEKDAY_NUM: Record<string, number> = {
 
 /**
  * 归一化日期:支持 今天/明天/后天/昨天、星期X(取下一次出现)、YYYY-MM-DD、M月D日 等;
- * 无法识别时兜底为今天。
+ * 无法识别时返回 null。
  */
-export function normalizeDate(value: unknown, today: Date): string {
+export function tryNormalizeDate(value: unknown, today: Date): string | null {
   const s = asString(value).replace(/\s+/g, '');
-  if (!s) return dateKeyOf(today);
+  if (!s) return null;
   if (s.includes('今天') || s === '今日') return dateKeyOf(today);
   if (s.includes('明天') || s === '明日') return shiftDate(today, 1);
   if (s.includes('后天') || s === '后日') return shiftDate(today, 2);
@@ -56,7 +56,7 @@ export function normalizeDate(value: unknown, today: Date): string {
     if (d.getMonth() === Number(full[2]) - 1 && d.getDate() === Number(full[3])) {
       return dateKeyOf(d);
     }
-    return dateKeyOf(today);
+    return null;
   }
 
   // 缺年份:M月D日,按今年处理;若已过则顺延到明年(与「星期X」取下一次出现保持一致)
@@ -70,10 +70,15 @@ export function normalizeDate(value: unknown, today: Date): string {
       }
       return dateKeyOf(d);
     }
-    return dateKeyOf(today);
+    return null;
   }
 
-  return dateKeyOf(today);
+  return null;
+}
+
+/** 归一化日期;无法识别时兜底为今天 */
+export function normalizeDate(value: unknown, today: Date): string {
+  return tryNormalizeDate(value, today) ?? dateKeyOf(today);
 }
 
 /** 上午/下午修饰与小时数 → 24 小时制小时 */
@@ -121,9 +126,22 @@ export function normalizeTask(raw: RawTaskItem, today: Date): ExtractedTask | nu
   const title = asString(raw.title).slice(0, 50);
   if (!title) return null;
   const note = asString(raw.note).slice(0, 100);
+  let dateKey = normalizeDate(raw.date, today);
+  let endDateKey = tryNormalizeDate(raw.endDate, today);
+  // 只有结束日晚于开始日才算跨多天;模型读反时交换,同一天视为单日任务
+  if (endDateKey) {
+    const startIndex = dayIndex(dateKey);
+    const endIndex = dayIndex(endDateKey);
+    if (startIndex != null && endIndex != null && endIndex < startIndex) {
+      [dateKey, endDateKey] = [endDateKey, dateKey];
+    } else if (startIndex != null && endIndex === startIndex) {
+      endDateKey = null;
+    }
+  }
   return {
     title,
-    dateKey: normalizeDate(raw.date, today),
+    dateKey,
+    endDateKey: endDateKey ?? undefined,
     startTime: normalizeTime(raw.start),
     endTime: normalizeTime(raw.end),
     note: note || undefined,
