@@ -46,6 +46,11 @@ export interface VisionProvider {
   customModel?: boolean;
   /** 自定义模型名输入框下方的提示文案 */
   modelHint?: string;
-  /** prompt 由当前模板提供,不同模板可给出不同提取指令 */
-  extractTasks(imageBase64: string, apiKey: string, prompt: string): Promise<RawTaskItem[]>;
+  /** prompt 由当前模板提供,不同模板可给出不同提取指令;signal 用于取消请求 */
+  extractTasks(
+    imageBase64: string,
+    apiKey: string,
+    prompt: string,
+    signal?: AbortSignal,
+  ): Promise<RawTaskItem[]>;
 }

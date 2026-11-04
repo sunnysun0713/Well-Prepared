@@ -31,9 +31,11 @@ export function createOpenAICompatProvider(config: CompatConfig): VisionProvider
       imageBase64: string,
       apiKey: string,
       prompt: string,
+      signal?: AbortSignal,
     ): Promise<RawTaskItem[]> {
       const res = await fetch(config.baseUrl, {
         method: 'POST',
+        signal,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,

@@ -45,6 +45,8 @@ export function TaskImportScreen() {
   const [images, setImages] = useState<PickedImage[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
   const previewRef = useRef<ScrollViewInstance>(null);
+  // 进行中的识别请求,取消时统一中断
+  const abortRef = useRef<AbortController | null>(null);
   const { width: windowWidth } = useWindowDimensions();
   // 预览区宽度:先按窗口估算,布局完成后用实际宽度校正(避免滚动条/内边距造成错位)
   const [previewWidth, setPreviewWidth] = useState(Math.max(1, windowWidth - 32));
@@ -129,12 +131,19 @@ export function TaskImportScreen() {
     }
   };
 
+  /** 取消正在进行的识别:中断所有图片请求,保留已选图片方便重试 */
+  const cancelExtraction = () => {
+    abortRef.current?.abort();
+  };
+
   /** AI 提取:逐张压缩图片 → 视觉服务 → 归一化,合并所有图片的任务后走导入流程 */
   const runExtraction = async () => {
     if (images.length === 0 || extracting) return;
     setError('');
     setImportNote('');
     setExtracting(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const provider = getProvider(settings.providerId, settings.customModel);
       const apiKey = settings.apiKeys[settings.providerId] ?? '';
@@ -145,9 +154,15 @@ export function TaskImportScreen() {
         throw new Error('请先在「模板」中添加一个提取模板');
       }
       const results = await Promise.all(
-        images.map((img) => extractTasksFromImage(provider, apiKey, img, preset.prompt)),
+        images.map((img) =>
+          extractTasksFromImage(provider, apiKey, img, preset.prompt, controller.signal),
+        ),
       );
       const tasks = results.flat();
+      if (controller.signal.aborted) {
+        setImportNote('已取消本次识别');
+        return;
+      }
       // 自动导入模式:直接归一化写入,不弹确认列表
       if (settings.autoImport) {
         const count = commitImport(draftsOf(tasks, new Date()), addTask, {
@@ -168,9 +183,14 @@ export function TaskImportScreen() {
       setResult(tasks);
       setResultOpen(true);
     } catch (e) {
+      if (controller.signal.aborted) {
+        setImportNote('已取消本次识别');
+        return;
+      }
       setError(e instanceof Error ? e.message : '提取失败,请重试');
     } finally {
       setExtracting(false);
+      if (abortRef.current === controller) abortRef.current = null;
     }
   };
 
@@ -357,19 +377,20 @@ export function TaskImportScreen() {
       <Pressable
         style={({ pressed }) => [
           styles.button,
-          styles.primaryButton,
-          !canExtract && styles.buttonDisabled,
-          pressed && canExtract && styles.primaryPressed,
+          extracting ? styles.cancelExtractButton : styles.primaryButton,
+          !extracting && !canExtract && styles.buttonDisabled,
+          pressed && !extracting && canExtract && styles.primaryPressed,
         ]}
-        disabled={!canExtract}
-        onPress={runExtraction}
+        disabled={!extracting && !canExtract}
+        onPress={extracting ? cancelExtraction : runExtraction}
         accessibilityRole="button"
-        accessibilityState={{ disabled: !canExtract, busy: extracting }}
+        accessibilityLabel={extracting ? '取消本次识别' : 'AI 提取任务'}
+        accessibilityState={{ disabled: !extracting && !canExtract, busy: extracting }}
       >
         {extracting ? (
           <>
-            <ActivityIndicator size="small" color={colors.onPrimary} />
-            <Text style={styles.primaryText}>识别中…</Text>
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+            <Text style={[styles.primaryText, styles.cancelExtractText]}>取消本次识别</Text>
           </>
         ) : (
           <>
@@ -598,6 +619,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
     backgroundColor: colors.primary,
     ...shadow.raised,
+  },
+  cancelExtractButton: {
+    marginTop: 12,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  cancelExtractText: {
+    color: colors.textSecondary,
   },
   primaryPressed: {
     backgroundColor: colors.primaryPressed,
