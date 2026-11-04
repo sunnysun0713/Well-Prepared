@@ -93,8 +93,8 @@ export interface SpanProgress {
   elapsedMs: number;
   /** 剩余时长(毫秒),已结束时为 0 */
   remainingMs: number;
-  /** 已过比例 0–1,用于进度条宽度 */
-  ratio: number;
+  /** 剩余比例 0–1,用于倒计时进度条宽度:未开始时为 1,已结束时为 0 */
+  remainingRatio: number;
   startAt: Date;
   endAt: Date;
 }
@@ -136,7 +136,7 @@ export function spanProgress(task: Task, now: Date = new Date()): SpanProgress |
     totalMs,
     elapsedMs,
     remainingMs: Math.max(endAt.getTime() - nowMs, 0),
-    ratio: elapsedMs / totalMs,
+    remainingRatio: Math.max(0, Math.min(1, (endAt.getTime() - nowMs) / totalMs)),
     startAt,
     endAt,
   };

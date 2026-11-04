@@ -46,8 +46,12 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
             : progress.status === 'pending'
               ? `未开始 · ${formatRemaining(progress.remainingMs)}`
               : `剩余 ${formatRemaining(progress.remainingMs)}`;
-        // 极短进度也保留一条细线,避免看起来是空条
-        const width = `${Math.max(2, Math.round(progress.ratio * 100))}%` as const;
+        // 倒计时进度条:填充宽度 = 剩余时间比例,随时间变短;已结束时清空。
+        // 进行中剩余的极短进度仍保留一条细线,避免看起来像尚未开始。
+        const percent = Math.round(progress.remainingRatio * 100);
+        const width = `${
+          progress.status === 'overdue' ? 0 : Math.max(2, percent)
+        }%` as const;
 
         return (
           <Pressable
