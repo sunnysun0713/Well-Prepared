@@ -15,7 +15,7 @@ export function AiSettingsModal({ visible, onClose }: Props) {
   const { settings, updateSettings } = useAiSettings();
   const [prevVisible, setPrevVisible] = useState(visible);
   const [providerId, setProviderId] = useState(settings.providerId);
-  const [apiKey, setApiKey] = useState(settings.apiKey);
+  const [keys, setKeys] = useState<Record<string, string>>(settings.apiKeys);
   const [customModel, setCustomModel] = useState(settings.customModel);
 
   // 打开弹窗时重置为已保存设置(渲染期间派生,避免 effect 内 setState)
@@ -23,19 +23,26 @@ export function AiSettingsModal({ visible, onClose }: Props) {
     setPrevVisible(visible);
     if (visible) {
       setProviderId(settings.providerId);
-      setApiKey(settings.apiKey);
+      setKeys(settings.apiKeys);
       setCustomModel(settings.customModel);
     }
   }
 
   const activeProvider = PROVIDERS.find((p) => p.id === providerId) ?? PROVIDERS[0];
+  const apiKey = keys[providerId] ?? '';
 
   const save = () => {
+    // 空 key 不保存,避免切换服务后残留空字符串
+    const apiKeys = Object.fromEntries(
+      Object.entries(keys)
+        .map(([id, key]) => [id, key.trim()] as const)
+        .filter(([, key]) => key.length > 0),
+    );
     // 展开已有设置,避免覆盖导入模式、模板等其它字段
     updateSettings({
       ...settings,
       providerId,
-      apiKey: apiKey.trim(),
+      apiKeys,
       customModel: customModel.trim(),
     });
     onClose();
@@ -84,7 +91,7 @@ export function AiSettingsModal({ visible, onClose }: Props) {
           <Text style={styles.label}>API Key</Text>
           <TextInput
             value={apiKey}
-            onChangeText={setApiKey}
+            onChangeText={(v) => setKeys((prev) => ({ ...prev, [providerId]: v }))}
             style={styles.input}
             placeholder="粘贴服务商提供的 API Key"
             placeholderTextColor="#9CA3AF"
@@ -92,6 +99,7 @@ export function AiSettingsModal({ visible, onClose }: Props) {
             autoCorrect={false}
           />
           <Text style={styles.note}>
+            不同视觉服务的 API Key 分开保存,切换服务不会互相覆盖。
             真实接口在浏览器自测时可能受跨域限制,手机端无此问题
           </Text>
 

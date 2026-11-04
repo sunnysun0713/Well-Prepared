@@ -118,13 +118,14 @@ export function TaskImportScreen() {
     setExtracting(true);
     try {
       const provider = getProvider(settings.providerId, settings.customModel);
-      if (!settings.apiKey) {
-        throw new Error('请先在右上角设置中填写 API Key');
+      const apiKey = settings.apiKeys[settings.providerId] ?? '';
+      if (!apiKey) {
+        throw new Error('请先在右上角设置中填写当前服务的 API Key');
       }
       if (!preset) {
         throw new Error('请先在「模板」中添加一个提取模板');
       }
-      const tasks = await extractTasksFromImage(provider, settings.apiKey, image, preset.prompt);
+      const tasks = await extractTasksFromImage(provider, apiKey, image, preset.prompt);
       // 自动导入模式:直接归一化写入,不弹确认列表
       if (settings.autoImport) {
         const count = commitImport(draftsOf(tasks, new Date()), addTask, {

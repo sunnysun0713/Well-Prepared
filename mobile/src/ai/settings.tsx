@@ -16,7 +16,8 @@ import { PROVIDERS } from './providers';
 /** AI 设置:视觉服务 + API key + 导入模式 + 模板 + 导入时自动提醒;数据结构变化时改版本号 */
 export interface AiSettings {
   providerId: string;
-  apiKey: string;
+  /** 各视觉服务分别保存的 API Key(服务商 id → key) */
+  apiKeys: Record<string, string>;
   /** 用户自定义的模型名;空串表示使用服务商默认模型(仅 customModel 为 true 的服务商生效) */
   customModel: string;
   /** true = 提取后直接写入任务;false = 弹确认列表由用户勾选 */
@@ -45,7 +46,7 @@ function defaultTemplates(): ExtractionPreset[] {
 const DEFAULT_SETTINGS: AiSettings = {
   // 比赛作品默认走华为云 MaaS,突出全链路华为云;用户可在设置中切换
   providerId: 'huawei-maas',
-  apiKey: '',
+  apiKeys: {},
   customModel: '',
   autoImport: false,
   templates: defaultTemplates(),
@@ -89,6 +90,16 @@ function parseTemplates(value: unknown): ExtractionPreset[] | null {
     });
   }
   return templates.length > 0 ? templates : null;
+}
+
+/** 校验存档中的分服务 API Key 表;无效时返回 null */
+function parseApiKeys(value: unknown): Record<string, string> | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const keys: Record<string, string> = {};
+  for (const [id, key] of Object.entries(value)) {
+    if (typeof key === 'string') keys[id] = key;
+  }
+  return keys;
 }
 
 /** 旧版模板提示词已内置旧输出规则:加载时替换为新版(支持跨多天 endDate 等规则) */
@@ -147,15 +158,24 @@ export function AiSettingsProvider({ children }: { children: ReactNode }) {
             templates.some((template) => template.id === parsed.presetId)
               ? parsed.presetId
               : templates[0]?.id ?? '';
+          const providerId =
+            typeof parsed.providerId === 'string' &&
+            PROVIDERS.some((provider) => provider.id === parsed.providerId)
+              ? parsed.providerId
+              : DEFAULT_SETTINGS.providerId;
+          // 旧存档只有单个 apiKey:迁移给当时选中的服务商
+          const legacyApiKey =
+            typeof (parsed as Record<string, unknown>).apiKey === 'string'
+              ? ((parsed as Record<string, unknown>).apiKey as string)
+              : '';
+          const apiKeys =
+            parseApiKeys(parsed.apiKeys) ??
+            (legacyApiKey ? { [providerId]: legacyApiKey } : {});
           dispatch({
             type: 'REPLACE',
             settings: {
-              providerId:
-                typeof parsed.providerId === 'string' &&
-                PROVIDERS.some((provider) => provider.id === parsed.providerId)
-                  ? parsed.providerId
-                  : DEFAULT_SETTINGS.providerId,
-              apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : '',
+              providerId,
+              apiKeys,
               customModel:
                 typeof parsed.customModel === 'string' ? parsed.customModel : '',
               autoImport:
