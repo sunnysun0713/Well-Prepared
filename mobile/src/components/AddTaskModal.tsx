@@ -151,7 +151,7 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
         em,
       );
       if (endAt.getTime() <= startAt.getTime()) {
-        setError('跨多天任务的结束时间需晚于开始时间');
+        setError('长时任务的结束时间需晚于开始时间');
         return;
       }
     } else if (endTime <= startTime) {
@@ -229,7 +229,7 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
               accessibilityState={{ selected: kind === 'span' }}
             >
               <Text style={[styles.segmentText, kind === 'span' && styles.segmentTextActive]}>
-                跨多天任务
+                长时任务
               </Text>
             </Pressable>
           </View>

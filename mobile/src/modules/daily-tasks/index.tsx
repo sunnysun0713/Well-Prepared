@@ -170,7 +170,7 @@ export function DailyTasksScreen() {
                 onPress={() => setSpanOpen((open) => !open)}
                 hitSlop={6}
                 accessibilityRole="button"
-                accessibilityLabel="剩余时间"
+                accessibilityLabel="长时任务"
                 accessibilityState={{ expanded: spanOpen }}
                 style={[styles.spanToggle, spanOpen && styles.spanToggleActive]}
               >
@@ -180,7 +180,7 @@ export function DailyTasksScreen() {
                   color={spanOpen ? colors.primary : colors.textSecondary}
                 />
                 <Text style={[styles.spanToggleText, spanOpen && styles.spanToggleTextActive]}>
-                  剩余时间
+                  长时任务
                 </Text>
                 <Ionicons
                   name={spanOpen ? 'chevron-up' : 'chevron-down'}

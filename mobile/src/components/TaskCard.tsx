@@ -58,7 +58,7 @@ export function TaskCard({ task, past }: Props) {
             {span && (
               <View style={styles.badge}>
                 <Ionicons name="calendar-outline" size={12} color={colors.primary} />
-                <Text style={styles.badgeText}>跨多天</Text>
+                <Text style={styles.badgeText}>长时任务</Text>
               </View>
             )}
             {hasAlarm && (

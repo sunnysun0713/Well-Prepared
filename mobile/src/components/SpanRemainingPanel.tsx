@@ -19,7 +19,7 @@ export function SpanRemainingPanel({ tasks }: Props) {
   if (tasks.length === 0) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>当天没有跨多天任务</Text>
+        <Text style={styles.emptyText}>当天没有长时任务</Text>
       </View>
     );
   }
