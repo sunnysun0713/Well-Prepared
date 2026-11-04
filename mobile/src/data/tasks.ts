@@ -17,6 +17,10 @@ export interface Task {
   startDateKey?: string;
   /** 跨多天任务结束日期键 'YYYY-M-D';短时任务为空 */
   endDateKey?: string;
+  /** 由长时任务自动生成的开始/结束短时任务,指向长时任务 id */
+  parentId?: string;
+  /** 自动生成任务的角色 */
+  spanRole?: 'start' | 'end';
   /** 提前提醒的分钟数;未设置表示无提醒 */
   remindAdvanceMinutes?: number;
   /** 闹钟铃声 id(见 reminder-sounds.ts);未设置表示默认铃声 */
@@ -157,6 +161,76 @@ export function spanRangeLabel(task: Task): string {
   const startText = `${start.getMonth() + 1}月${start.getDate()}日`;
   const endText = `${end.getMonth() + 1}月${end.getDate()}日`;
   return `${startText} ${task.startTime} → ${endText} ${task.endTime}`;
+}
+
+/** 'HH:mm' 平移分钟数,结果限制在当天 00:00–23:59 */
+function shiftTime(value: string, deltaMinutes: number): string {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  if (!match) return value;
+  const total = Math.min(
+    Math.max(Number(match[1]) * 60 + Number(match[2]) + deltaMinutes, 0),
+    23 * 60 + 59,
+  );
+  const hour = String(Math.floor(total / 60)).padStart(2, '0');
+  const minute = String(total % 60).padStart(2, '0');
+  return `${hour}:${minute}`;
+}
+
+const MARKER_MINUTES = 30;
+
+/**
+ * 长时任务派生出的两条短时任务:
+ * 开始当天一条「开始 · 标题」,结束当天一条「结束 · 标题」。
+ */
+export function buildSpanMarkers(span: Task): { dateKey: string; task: Task }[] {
+  if (!isSpanTask(span)) return [];
+  const startKey = span.startDateKey as string;
+  const endKey = span.endDateKey as string;
+  const range = spanRangeLabel(span);
+
+  // 开始标记:开始时刻起 30 分钟;越界时改为开始前 30 分钟
+  let startFrom = span.startTime;
+  let startTo = shiftTime(startFrom, MARKER_MINUTES);
+  if (startTo <= startFrom) {
+    startTo = startFrom;
+    startFrom = shiftTime(startTo, -MARKER_MINUTES);
+  }
+  // 结束标记:结束时刻前 30 分钟;越界时改为结束后 30 分钟
+  let endFrom = shiftTime(span.endTime, -MARKER_MINUTES);
+  let endTo = span.endTime;
+  if (endFrom >= endTo) {
+    endFrom = endTo;
+    endTo = shiftTime(endFrom, MARKER_MINUTES);
+  }
+
+  return [
+    {
+      dateKey: startKey,
+      task: {
+        id: `${span.id}-start`,
+        title: `开始 · ${span.title}`,
+        startTime: startFrom,
+        endTime: startTo,
+        note: `长时任务开始(${range})`,
+        kind: 'short',
+        parentId: span.id,
+        spanRole: 'start',
+      },
+    },
+    {
+      dateKey: endKey,
+      task: {
+        id: `${span.id}-end`,
+        title: `结束 · ${span.title}`,
+        startTime: endFrom,
+        endTime: endTo,
+        note: `长时任务结束(${range})`,
+        kind: 'short',
+        parentId: span.id,
+        spanRole: 'end',
+      },
+    },
+  ];
 }
 
 /** 示例计划:相对今天的天数偏移 → 当日任务(时间为示意) */

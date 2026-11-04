@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cancelTaskReminder, syncTaskReminder } from '@/notifications';
 import { pullState, pushState, syncEnabled } from './sync';
-import { buildInitialTasks, dateKeyOf, isSpanTask, spanCoversDate, type Task, type TasksState } from './tasks';
+import { buildInitialTasks, buildSpanMarkers, dateKeyOf, isSpanTask, spanCoversDate, type Task, type TasksState } from './tasks';
 
 /** 本地存档键;数据结构变化时改版本号,避免读到旧格式 */
 const STORAGE_KEY = 'tasks-state-v1';
@@ -25,12 +25,38 @@ type Action =
   | { type: 'UPDATE_TASK'; id: string; patch: Partial<Omit<Task, 'id'>>; moveToDateKey?: string }
   | { type: 'DELETE_TASK'; id: string };
 
+/** 移除长时任务派生出的开始 / 结束短时任务 */
+function withoutMarkers(state: TasksState, parentId: string): TasksState {
+  const next: TasksState = {};
+  for (const [key, tasks] of Object.entries(state)) {
+    const kept = tasks.filter((task) => task.parentId !== parentId);
+    if (kept.length > 0) next[key] = kept;
+  }
+  return next;
+}
+
+/** 追加长时任务派生出的开始 / 结束短时任务 */
+function withMarkers(state: TasksState, span: Task): TasksState {
+  const next: TasksState = { ...state };
+  for (const { dateKey, task } of buildSpanMarkers(span)) {
+    next[dateKey] = [...(next[dateKey] ?? []), task];
+  }
+  return next;
+}
+
 function reducer(state: TasksState, action: Action): TasksState {
   switch (action.type) {
     case 'REPLACE':
       return action.state;
-    case 'ADD_TASK':
-      return { ...state, [action.dateKey]: [...(state[action.dateKey] ?? []), action.task] };
+    case 'ADD_TASK': {
+      let next: TasksState = {
+        ...state,
+        [action.dateKey]: [...(state[action.dateKey] ?? []), action.task],
+      };
+      // 长时任务同时生成开始日 / 结束日的短时任务
+      if (isSpanTask(action.task)) next = withMarkers(next, action.task);
+      return next;
+    }
     case 'UPDATE_TASK': {
       const { id, patch, moveToDateKey } = action;
       let sourceKey: string | null = null;
@@ -45,27 +71,38 @@ function reducer(state: TasksState, action: Action): TasksState {
       }
       if (!current || sourceKey === null) return state;
       const updated: Task = { ...current, ...patch };
+      // 长时任务改名 / 改期 / 改时间时,旧派生任务先移除,保存后重新生成
+      let next: TasksState = current.kind === 'span' ? withoutMarkers(state, id) : { ...state };
       // 起始日期变化(仅跨多天任务)时把任务移到新的日期分组
       if (moveToDateKey && moveToDateKey !== sourceKey) {
-        const next: TasksState = { ...state };
-        const remain = state[sourceKey].filter((t) => t.id !== id);
+        const remain = (next[sourceKey] ?? []).filter((t) => t.id !== id);
         if (remain.length > 0) next[sourceKey] = remain;
         else delete next[sourceKey];
         next[moveToDateKey] = [...(next[moveToDateKey] ?? []), updated];
-        return next;
+      } else {
+        next[sourceKey] = (next[sourceKey] ?? []).map((t) => (t.id === id ? updated : t));
       }
-      return {
-        ...state,
-        [sourceKey]: state[sourceKey].map((t) => (t.id === id ? updated : t)),
-      };
+      if (isSpanTask(updated)) next = withMarkers(next, updated);
+      return next;
     }
-    case 'DELETE_TASK':
+    case 'DELETE_TASK': {
+      // 删除长时任务时,连同它派生的开始 / 结束短时任务一起删除
+      const removeIds = new Set<string>([action.id]);
+      for (const tasks of Object.values(state)) {
+        for (const task of tasks) {
+          if (task.parentId === action.id) removeIds.add(task.id);
+        }
+      }
       // 删除后为空的日期键一并移除,保持存档整洁
       return Object.fromEntries(
         Object.entries(state)
-          .map(([key, tasks]) => [key, tasks.filter((t) => t.id !== action.id)] as const)
+          .map(
+            ([key, tasks]) =>
+              [key, tasks.filter((t) => !removeIds.has(t.id))] as const,
+          )
           .filter(([, tasks]) => tasks.length > 0),
       );
+    }
   }
 }
 
