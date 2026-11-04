@@ -86,12 +86,13 @@ function reducer(state: TasksState, action: Action): TasksState {
       return next;
     }
     case 'DELETE_TASK': {
-      // 删除长时任务时,连同它派生的开始 / 结束短时任务一起删除
-      const removeIds = new Set<string>([action.id]);
-      for (const tasks of Object.values(state)) {
-        for (const task of tasks) {
-          if (task.parentId === action.id) removeIds.add(task.id);
-        }
+      // 删除长时任务或它派生的任一开始/结束任务时,整组(长时任务 + 起止两条)一起删除
+      const allTasks = Object.values(state).flat();
+      const target = allTasks.find((task) => task.id === action.id);
+      const rootId = target?.parentId ?? action.id;
+      const removeIds = new Set<string>([action.id, rootId]);
+      for (const task of allTasks) {
+        if (task.id === rootId || task.parentId === rootId) removeIds.add(task.id);
       }
       // 删除后为空的日期键一并移除,保持存档整洁
       return Object.fromEntries(
@@ -303,11 +304,22 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [state],
   );
 
-  const deleteTask = useCallback((id: string) => {
-    dispatch({ type: 'DELETE_TASK', id });
-    setUpdatedAt(Date.now());
-    void cancelTaskReminder(id);
-  }, []);
+  const deleteTask = useCallback(
+    (id: string) => {
+      // 取消整组任务的提醒:长时任务自身 + 派生的开始 / 结束任务
+      const allTasks = Object.values(state).flat();
+      const target = allTasks.find((task) => task.id === id);
+      const rootId = target?.parentId ?? id;
+      for (const task of allTasks) {
+        if (task.id === id || task.id === rootId || task.parentId === rootId) {
+          void cancelTaskReminder(task.id);
+        }
+      }
+      dispatch({ type: 'DELETE_TASK', id });
+      setUpdatedAt(Date.now());
+    },
+    [state],
+  );
 
   const value = useMemo(
     () => ({ getTasks, getSpanTasks, getTaskById, addTask, updateTask, deleteTask }),
