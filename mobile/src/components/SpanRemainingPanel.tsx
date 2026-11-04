@@ -70,6 +70,11 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
               </Text>
               <Text style={[styles.remaining, { color }]}>{text}</Text>
             </View>
+            {task.note ? (
+              <Text style={styles.note} numberOfLines={2}>
+                {task.note}
+              </Text>
+            ) : null}
             <View style={styles.track}>
               <View style={[styles.fill, { width, backgroundColor: color }]} />
             </View>
@@ -120,6 +125,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textMuted,
     fontVariant: ['tabular-nums'],
+  },
+  note: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textSecondary,
   },
   track: {
     height: 6,

@@ -21,6 +21,8 @@ export interface Task {
   parentId?: string;
   /** 自动生成任务的角色 */
   spanRole?: 'start' | 'end';
+  /** 由长时任务生成的短时任务携带的起止范围文案,显示在任务名后 */
+  spanRange?: string;
   /** 提前提醒的分钟数;未设置表示无提醒 */
   remindAdvanceMinutes?: number;
   /** 闹钟铃声 id(见 reminder-sounds.ts);未设置表示默认铃声 */
@@ -226,7 +228,7 @@ export function buildSpanMarkers(span: Task): { dateKey: string; task: Task }[] 
         title: `开始 · ${span.title}`,
         startTime: startFrom,
         endTime: startTo,
-        note: `长时任务开始(${range})`,
+        spanRange: range,
         kind: 'short',
         parentId: span.id,
         spanRole: 'start',
@@ -239,13 +241,37 @@ export function buildSpanMarkers(span: Task): { dateKey: string; task: Task }[] 
         title: `结束 · ${span.title}`,
         startTime: endFrom,
         endTime: endTo,
-        note: `长时任务结束(${range})`,
+        spanRange: range,
         kind: 'short',
         parentId: span.id,
         spanRole: 'end',
       },
     },
   ];
+}
+
+/** 旧存档中长时任务派生任务的备注格式:「长时任务开始(范围)」 */
+const LEGACY_MARKER_NOTE = /^长时任务(?:开始|结束)\((.+)\)$/;
+
+/**
+ * 把旧存档里写在备注中的长时任务范围迁移到 spanRange 字段。
+ * 新版本卡片将它显示在任务名后,备注位置留给用户自己填写的内容。
+ */
+export function migrateSpanMarkers(state: TasksState): TasksState {
+  let changed = false;
+  const next: TasksState = {};
+  for (const [key, tasks] of Object.entries(state)) {
+    next[key] = tasks.map((task) => {
+      if (!task.spanRole || task.spanRange || !task.note) return task;
+      const match = LEGACY_MARKER_NOTE.exec(task.note);
+      if (!match) return task;
+      changed = true;
+      const migrated = { ...task, spanRange: match[1] };
+      delete migrated.note;
+      return migrated;
+    });
+  }
+  return changed ? next : state;
 }
 
 /** 示例计划:相对今天的天数偏移 → 当日任务(时间为示意) */

@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cancelTaskReminder, syncTaskReminder } from '@/notifications';
 import { pullState, pushState, syncEnabled } from './sync';
-import { buildInitialTasks, buildSpanMarkers, dateKeyOf, isSpanTask, spanCoversDate, type Task, type TasksState } from './tasks';
+import { buildInitialTasks, buildSpanMarkers, dateKeyOf, isSpanTask, migrateSpanMarkers, spanCoversDate, type Task, type TasksState } from './tasks';
 
 /** 本地存档键;数据结构变化时改版本号,避免读到旧格式 */
 const STORAGE_KEY = 'tasks-state-v1';
@@ -153,7 +153,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       let localState: TasksState | null = null;
       if (raw) {
         try {
-          const parsed = JSON.parse(raw) as TasksState;
+          const parsed = migrateSpanMarkers(JSON.parse(raw) as TasksState);
           dispatch({ type: 'REPLACE', state: parsed });
           localState = parsed;
           // 启动时按存档重排全部提醒(覆盖本功能上线前只存了数字的旧任务)
@@ -184,7 +184,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
             if (localState) void pushState(localState, localUpdatedAt);
           } else if (remote.updatedAt > localUpdatedAt) {
             // 云端较新:整体替换本地并重排提醒,跳过本次上传
-            const remoteState = remote.state as TasksState;
+            const remoteState = migrateSpanMarkers(remote.state as TasksState);
             dispatch({ type: 'REPLACE', state: remoteState });
             setUpdatedAt(remote.updatedAt);
             resyncAllReminders(remoteState);

@@ -38,9 +38,16 @@ export function TaskCard({ task, past }: Props) {
       )}
 
       <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={2}>
-          {task.title}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={2}>
+            {task.title}
+          </Text>
+          {task.spanRange ? (
+            <Text style={styles.spanRange} numberOfLines={1}>
+              ({task.spanRange})
+            </Text>
+          ) : null}
+        </View>
         {task.note ? (
           <Text style={styles.note} numberOfLines={2}>
             {task.note}
@@ -149,10 +156,23 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
+  titleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: 4,
+  },
   title: {
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: '600',
     color: colors.text,
+  },
+  spanRange: {
+    flexShrink: 0,
+    fontSize: 10,
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
   },
   note: {
     fontSize: 12,
