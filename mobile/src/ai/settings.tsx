@@ -10,7 +10,7 @@ import {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
-import { DEFAULT_PRESET_ID, LEGACY_OUTPUT_RULES, OUTPUT_RULES, PRESETS, type ExtractionPreset } from './presets';
+import { DEFAULT_PRESET_ID, LEGACY_OUTPUT_RULES_VERSIONS, OUTPUT_RULES, PRESETS, type ExtractionPreset } from './presets';
 import { PROVIDERS } from './providers';
 
 /** AI 设置:视觉服务 + API key + 导入模式 + 模板 + 导入时自动提醒;数据结构变化时改版本号 */
@@ -91,11 +91,13 @@ function parseTemplates(value: unknown): ExtractionPreset[] | null {
   return templates.length > 0 ? templates : null;
 }
 
-/** 旧版模板提示词已内置旧输出规则:加载时替换为新版(支持跨多天 endDate) */
+/** 旧版模板提示词已内置旧输出规则:加载时替换为新版(支持跨多天 endDate 等规则) */
 function migrateTemplatePrompt(prompt: string): string {
   if (prompt.includes(OUTPUT_RULES)) return prompt;
-  if (prompt.includes(LEGACY_OUTPUT_RULES)) {
-    return prompt.replace(LEGACY_OUTPUT_RULES, OUTPUT_RULES);
+  for (const legacy of LEGACY_OUTPUT_RULES_VERSIONS) {
+    if (prompt.includes(legacy)) {
+      return prompt.replace(legacy, OUTPUT_RULES);
+    }
   }
   return prompt;
 }
