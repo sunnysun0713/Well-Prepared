@@ -211,28 +211,31 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-          <View style={styles.segment}>
-            <Pressable
-              onPress={() => selectKind('short')}
-              style={[styles.segmentItem, kind === 'short' && styles.segmentItemActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: kind === 'short' }}
-            >
-              <Text style={[styles.segmentText, kind === 'short' && styles.segmentTextActive]}>
-                短时任务
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => selectKind('span')}
-              style={[styles.segmentItem, kind === 'span' && styles.segmentItemActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: kind === 'span' }}
-            >
-              <Text style={[styles.segmentText, kind === 'span' && styles.segmentTextActive]}>
-                长时任务
-              </Text>
-            </Pressable>
-          </View>
+          {/* 编辑模式已确定任务类型,不再提供短时/长时切换,只保留当前类型的设置 */}
+          {!editTask ? (
+            <View style={styles.segment}>
+              <Pressable
+                onPress={() => selectKind('short')}
+                style={[styles.segmentItem, kind === 'short' && styles.segmentItemActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: kind === 'short' }}
+              >
+                <Text style={[styles.segmentText, kind === 'short' && styles.segmentTextActive]}>
+                  短时任务
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => selectKind('span')}
+                style={[styles.segmentItem, kind === 'span' && styles.segmentItemActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: kind === 'span' }}
+              >
+                <Text style={[styles.segmentText, kind === 'span' && styles.segmentTextActive]}>
+                  长时任务
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           <Text style={styles.label}>任务名</Text>
           <TextInput
