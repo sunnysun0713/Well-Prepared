@@ -95,7 +95,7 @@ export function DailyTasksScreen() {
   // 任务只随日期(与任务状态)变化
   const dateKey = selectedDate.toDateString();
   const tasks = useMemo(() => getTasks(new Date(dateKey)), [dateKey, getTasks]);
-  const spanTasks = useMemo(() => getSpanTasks(new Date(dateKey)), [dateKey, getSpanTasks]);
+  const spanTasks = useMemo(() => getSpanTasks(), [getSpanTasks]);
 
   // 今天收藏(紧急)任务数:始终按真实今天统计,与当前浏览日期无关
   const todayFavoriteCount = useMemo(

@@ -21,7 +21,7 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
   if (tasks.length === 0) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyText}>当天没有长时任务</Text>
+        <Text style={styles.emptyText}>暂无长时任务</Text>
       </View>
     );
   }
@@ -67,16 +67,14 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
               </Text>
               <Text style={[styles.remaining, { color }]}>{text}</Text>
             </View>
-            <View style={styles.metaRow}>
-              <Text style={styles.dateRange} numberOfLines={1}>
-                ({spanDateRangeLabel(task)})
+            <Text style={styles.dateRange} numberOfLines={1}>
+              ({spanDateRangeLabel(task)})
+            </Text>
+            {task.note ? (
+              <Text style={styles.note} numberOfLines={2}>
+                {task.note}
               </Text>
-              {task.note ? (
-                <Text style={styles.note} numberOfLines={1}>
-                  {task.note}
-                </Text>
-              ) : null}
-            </View>
+            ) : null}
             <View style={styles.track}>
               <View style={[styles.fill, { width, backgroundColor: color }]} />
             </View>
@@ -109,11 +107,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   title: {
     flex: 1,
     fontSize: 14,
@@ -127,14 +120,13 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   dateRange: {
-    flexShrink: 0,
     fontSize: 11,
     color: colors.textMuted,
     fontVariant: ['tabular-nums'],
   },
   note: {
-    flexShrink: 1,
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 17,
     color: colors.textSecondary,
   },
   track: {

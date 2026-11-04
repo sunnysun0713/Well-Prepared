@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cancelTaskReminder, syncTaskReminder } from '@/notifications';
 import { pullState, pushState, syncEnabled } from './sync';
-import { buildInitialTasks, buildSpanMarkers, dateKeyOf, isSpanTask, migrateSpanMarkers, spanCoversDate, type Task, type TasksState } from './tasks';
+import { buildInitialTasks, buildSpanMarkers, dateKeyOf, isSpanTask, migrateSpanMarkers, type Task, type TasksState } from './tasks';
 
 /** 本地存档键;数据结构变化时改版本号,避免读到旧格式 */
 const STORAGE_KEY = 'tasks-state-v1';
@@ -110,8 +110,8 @@ function reducer(state: TasksState, action: Action): TasksState {
 interface TasksContextValue {
   /** 某天的短时任务(长时任务只在「长时任务」面板展示),按起始时间升序 */
   getTasks: (date: Date) => Task[];
-  /** 覆盖某天的跨多天任务,按开始日期升序 */
-  getSpanTasks: (date: Date) => Task[];
+  /** 全部跨多天任务(无论是否覆盖某天,始终在长时任务面板展示) */
+  getSpanTasks: () => Task[];
   /** 按 id 查找任务(派生任务据此找到所属长时任务) */
   getTaskById: (id: string) => Task | null;
   /** 在指定日期新增任务 */
@@ -246,27 +246,22 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [state],
   );
 
-  /** 覆盖某天的跨多天任务(用于「剩余时间」面板) */
-  const getSpanTasks = useCallback(
-    (date: Date) => {
-      const result: Task[] = [];
-      const seen = new Set<string>();
-      for (const tasks of Object.values(state)) {
-        for (const task of tasks) {
-          if (seen.has(task.id) || !isSpanTask(task)) continue;
-          if (spanCoversDate(task, date)) {
-            seen.add(task.id);
-            result.push(task);
-          }
-        }
+  /** 全部跨多天任务(不按日期过滤,面板里始终展示) */
+  const getSpanTasks = useCallback(() => {
+    const result: Task[] = [];
+    const seen = new Set<string>();
+    for (const tasks of Object.values(state)) {
+      for (const task of tasks) {
+        if (seen.has(task.id) || !isSpanTask(task)) continue;
+        seen.add(task.id);
+        result.push(task);
       }
-      return result.sort((a, b) =>
-        (a.startDateKey ?? '').localeCompare(b.startDateKey ?? '') ||
-        a.startTime.localeCompare(b.startTime),
-      );
-    },
-    [state],
-  );
+    }
+    return result.sort((a, b) =>
+      (a.startDateKey ?? '').localeCompare(b.startDateKey ?? '') ||
+      a.startTime.localeCompare(b.startTime),
+    );
+  }, [state]);
 
   /** 按 id 查找任务;不存在时返回 null */
   const getTaskById = useCallback(

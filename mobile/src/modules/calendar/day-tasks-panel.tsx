@@ -23,7 +23,7 @@ export function DayTasksPanel({ date, onJumpToDate }: Props) {
   const [spanOpen, setSpanOpen] = useState(false);
   const [editingSpan, setEditingSpan] = useState<Task | null>(null);
   const tasks = getTasks(date);
-  const spanTasks = getSpanTasks(date);
+  const spanTasks = getSpanTasks();
 
   const now = new Date();
   const isToday =
