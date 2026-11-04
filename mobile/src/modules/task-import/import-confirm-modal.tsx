@@ -105,71 +105,85 @@ export function ImportConfirmModal({ visible, tasks, onClose, onImport }: Props)
                   contentContainerStyle={styles.listContent}
                   keyboardShouldPersistTaps="handled"
                 >
-                  {items.map((it, index) => (
-                    <View key={index} style={styles.itemCard}>
-                      <View style={styles.itemHeader}>
-                        <Pressable
-                          onPress={() => patchItem(index, { selected: !it.selected })}
-                          style={[styles.checkbox, it.selected && styles.checkboxOn]}
-                          hitSlop={8}
-                        >
-                          {it.selected ? <Text style={styles.checkboxText}>✓</Text> : null}
-                        </Pressable>
+                  {items.map((it, index) => {
+                    // 有结束日期 = 长时任务:显示日期范围;否则按短时任务只显示单日日期
+                    const isSpan = it.endDateText.trim() !== '';
+                    return (
+                      <View key={index} style={styles.itemCard}>
+                        <View style={styles.itemHeader}>
+                          <Pressable
+                            onPress={() => patchItem(index, { selected: !it.selected })}
+                            style={[styles.checkbox, it.selected && styles.checkboxOn]}
+                            hitSlop={8}
+                          >
+                            {it.selected ? <Text style={styles.checkboxText}>✓</Text> : null}
+                          </Pressable>
+                          <TextInput
+                            value={it.title}
+                            onChangeText={(v) => patchItem(index, { title: v })}
+                            style={styles.titleInput}
+                            placeholder="任务名"
+                            placeholderTextColor="#9CA3AF"
+                            maxLength={50}
+                          />
+                        </View>
+
+                        <Text style={styles.fieldLabel}>备注</Text>
                         <TextInput
-                          value={it.title}
-                          onChangeText={(v) => patchItem(index, { title: v })}
-                          style={styles.titleInput}
-                          placeholder="任务名"
+                          value={it.note}
+                          onChangeText={(v) => patchItem(index, { note: v })}
+                          style={styles.noteInput}
+                          placeholder="备注(可选)"
                           placeholderTextColor="#9CA3AF"
-                          maxLength={50}
+                          maxLength={100}
                         />
+
+                        <Text style={styles.fieldLabel}>日期</Text>
+                        <View style={styles.metaRow}>
+                          <TextInput
+                            value={it.dateText}
+                            onChangeText={(v) => patchItem(index, { dateText: v })}
+                            style={styles.dateInput}
+                            placeholder={isSpan ? '开始日期' : '日期'}
+                            placeholderTextColor="#9CA3AF"
+                          />
+                          {isSpan ? (
+                            <>
+                              <Text style={styles.dash}>~</Text>
+                              <TextInput
+                                value={it.endDateText}
+                                onChangeText={(v) => patchItem(index, { endDateText: v })}
+                                style={styles.dateInput}
+                                placeholder="结束日期"
+                                placeholderTextColor="#9CA3AF"
+                              />
+                            </>
+                          ) : null}
+                        </View>
+
+                        <Text style={styles.fieldLabel}>时间</Text>
+                        <View style={styles.metaRow}>
+                          <TextInput
+                            value={it.startText}
+                            onChangeText={(v) => patchItem(index, { startText: v })}
+                            style={styles.timeInput}
+                            placeholder="开始"
+                            placeholderTextColor="#9CA3AF"
+                            maxLength={8}
+                          />
+                          <Text style={styles.dash}>至</Text>
+                          <TextInput
+                            value={it.endText}
+                            onChangeText={(v) => patchItem(index, { endText: v })}
+                            style={styles.timeInput}
+                            placeholder="结束"
+                            placeholderTextColor="#9CA3AF"
+                            maxLength={8}
+                          />
+                        </View>
                       </View>
-                      <View style={styles.metaRow}>
-                        <TextInput
-                          value={it.dateText}
-                          onChangeText={(v) => patchItem(index, { dateText: v })}
-                          style={styles.dateInput}
-                          placeholder="开始日期"
-                          placeholderTextColor="#9CA3AF"
-                        />
-                        <Text style={styles.dash}>~</Text>
-                        <TextInput
-                          value={it.endDateText}
-                          onChangeText={(v) => patchItem(index, { endDateText: v })}
-                          style={styles.dateInput}
-                          placeholder="结束日期(可空)"
-                          placeholderTextColor="#9CA3AF"
-                        />
-                      </View>
-                      <View style={styles.metaRow}>
-                        <TextInput
-                          value={it.startText}
-                          onChangeText={(v) => patchItem(index, { startText: v })}
-                          style={styles.timeInput}
-                          placeholder="开始"
-                          placeholderTextColor="#9CA3AF"
-                          maxLength={8}
-                        />
-                        <Text style={styles.dash}>至</Text>
-                        <TextInput
-                          value={it.endText}
-                          onChangeText={(v) => patchItem(index, { endText: v })}
-                          style={styles.timeInput}
-                          placeholder="结束"
-                          placeholderTextColor="#9CA3AF"
-                          maxLength={8}
-                        />
-                      </View>
-                      <TextInput
-                        value={it.note}
-                        onChangeText={(v) => patchItem(index, { note: v })}
-                        style={styles.noteInput}
-                        placeholder="备注(可选)"
-                        placeholderTextColor="#9CA3AF"
-                        maxLength={100}
-                      />
-                    </View>
-                  ))}
+                    );
+                  })}
                 </ScrollView>
               </>
             ) : (
@@ -289,6 +303,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1F2937',
     backgroundColor: '#FFFFFF',
+  },
+  fieldLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
   metaRow: {
     flexDirection: 'row',
