@@ -12,7 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cancelTaskReminder, syncTaskReminder } from '@/notifications';
 import { pullState, pushState, syncEnabled } from './sync';
-import { buildInitialTasks, dateKeyOf, type Task, type TasksState } from './tasks';
+import { buildInitialTasks, dateKeyOf, isSpanTask, spanCoversDate, type Task, type TasksState } from './tasks';
 
 /** 本地存档键;数据结构变化时改版本号,避免读到旧格式 */
 const STORAGE_KEY = 'tasks-state-v1';
@@ -22,7 +22,7 @@ const UPDATED_AT_KEY = 'tasks-updatedAt-v1';
 type Action =
   | { type: 'REPLACE'; state: TasksState }
   | { type: 'ADD_TASK'; dateKey: string; task: Task }
-  | { type: 'UPDATE_TASK'; id: string; patch: Partial<Omit<Task, 'id'>> }
+  | { type: 'UPDATE_TASK'; id: string; patch: Partial<Omit<Task, 'id'>>; moveToDateKey?: string }
   | { type: 'DELETE_TASK'; id: string };
 
 function reducer(state: TasksState, action: Action): TasksState {
@@ -31,13 +31,34 @@ function reducer(state: TasksState, action: Action): TasksState {
       return action.state;
     case 'ADD_TASK':
       return { ...state, [action.dateKey]: [...(state[action.dateKey] ?? []), action.task] };
-    case 'UPDATE_TASK':
-      return Object.fromEntries(
-        Object.entries(state).map(([key, tasks]) => [
-          key,
-          tasks.map((t) => (t.id === action.id ? { ...t, ...action.patch } : t)),
-        ]),
-      );
+    case 'UPDATE_TASK': {
+      const { id, patch, moveToDateKey } = action;
+      let sourceKey: string | null = null;
+      let current: Task | null = null;
+      for (const [key, tasks] of Object.entries(state)) {
+        const found = tasks.find((t) => t.id === id);
+        if (found) {
+          sourceKey = key;
+          current = found;
+          break;
+        }
+      }
+      if (!current || sourceKey === null) return state;
+      const updated: Task = { ...current, ...patch };
+      // 起始日期变化(仅跨多天任务)时把任务移到新的日期分组
+      if (moveToDateKey && moveToDateKey !== sourceKey) {
+        const next: TasksState = { ...state };
+        const remain = state[sourceKey].filter((t) => t.id !== id);
+        if (remain.length > 0) next[sourceKey] = remain;
+        else delete next[sourceKey];
+        next[moveToDateKey] = [...(next[moveToDateKey] ?? []), updated];
+        return next;
+      }
+      return {
+        ...state,
+        [sourceKey]: state[sourceKey].map((t) => (t.id === id ? updated : t)),
+      };
+    }
     case 'DELETE_TASK':
       // 删除后为空的日期键一并移除,保持存档整洁
       return Object.fromEntries(
@@ -49,12 +70,14 @@ function reducer(state: TasksState, action: Action): TasksState {
 }
 
 interface TasksContextValue {
-  /** 某天的任务,按起始时间升序 */
+  /** 某天的任务(含覆盖该天的跨多天任务),按起始时间升序 */
   getTasks: (date: Date) => Task[];
+  /** 覆盖某天的跨多天任务,按开始日期升序 */
+  getSpanTasks: (date: Date) => Task[];
   /** 在指定日期新增任务 */
   addTask: (date: Date, task: Task) => void;
-  /** 按任务 id 更新(标题/时间/备注/提醒等) */
-  updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>) => void;
+  /** 按任务 id 更新;跨多天任务改变开始日期时传 moveToDateKey 迁移分组 */
+  updateTask: (id: string, patch: Partial<Omit<Task, 'id'>>, moveToDateKey?: string) => void;
   /** 按任务 id 删除 */
   deleteTask: (id: string) => void;
 }
@@ -173,10 +196,45 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, [hydrated, state, updatedAt]);
 
   const getTasks = useCallback(
-    (date: Date) =>
-      (state[dateKeyOf(date)] ?? [])
-        .slice()
-        .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    (date: Date) => {
+      const key = dateKeyOf(date);
+      const direct = state[key] ?? [];
+      const spans: Task[] = [];
+      const seen = new Set(direct.map((t) => t.id));
+      for (const [groupKey, tasks] of Object.entries(state)) {
+        if (groupKey === key) continue;
+        for (const task of tasks) {
+          if (seen.has(task.id) || !isSpanTask(task)) continue;
+          if (spanCoversDate(task, date)) {
+            seen.add(task.id);
+            spans.push(task);
+          }
+        }
+      }
+      return [...direct, ...spans].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    },
+    [state],
+  );
+
+  /** 覆盖某天的跨多天任务(用于「剩余时间」面板) */
+  const getSpanTasks = useCallback(
+    (date: Date) => {
+      const result: Task[] = [];
+      const seen = new Set<string>();
+      for (const tasks of Object.values(state)) {
+        for (const task of tasks) {
+          if (seen.has(task.id) || !isSpanTask(task)) continue;
+          if (spanCoversDate(task, date)) {
+            seen.add(task.id);
+            result.push(task);
+          }
+        }
+      }
+      return result.sort((a, b) =>
+        (a.startDateKey ?? '').localeCompare(b.startDateKey ?? '') ||
+        a.startTime.localeCompare(b.startTime),
+      );
+    },
     [state],
   );
 
@@ -189,14 +247,14 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateTask = useCallback(
-    (id: string, patch: Partial<Omit<Task, 'id'>>) => {
-      dispatch({ type: 'UPDATE_TASK', id, patch });
+    (id: string, patch: Partial<Omit<Task, 'id'>>, moveToDateKey?: string) => {
+      dispatch({ type: 'UPDATE_TASK', id, patch, moveToDateKey });
       setUpdatedAt(Date.now());
-      // 找到任务所属日期,按更新后的完整任务重排提醒
+      // 找到任务所属日期,按更新后的完整任务重排提醒;迁移分组时用新日期键
       for (const [key, tasks] of Object.entries(state)) {
         const current = tasks.find((t) => t.id === id);
         if (current) {
-          void syncTaskReminder(key, { ...current, ...patch });
+          void syncTaskReminder(moveToDateKey ?? key, { ...current, ...patch });
           break;
         }
       }
@@ -211,8 +269,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ getTasks, addTask, updateTask, deleteTask }),
-    [getTasks, addTask, updateTask, deleteTask],
+    () => ({ getTasks, getSpanTasks, addTask, updateTask, deleteTask }),
+    [getTasks, getSpanTasks, addTask, updateTask, deleteTask],
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

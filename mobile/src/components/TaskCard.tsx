@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Task } from '@/data/tasks';
+import { isSpanTask, spanRangeLabel } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { colors, radius, shadow } from '@/theme';
 import { AddTaskModal } from './AddTaskModal';
@@ -21,6 +22,7 @@ export function TaskCard({ task, past }: Props) {
   const hasTime = Boolean(task.startTime || task.endTime);
   const hasAlarm = task.remindAdvanceMinutes != null;
   const hasSms = task.smsRemindAdvanceMinutes != null;
+  const span = isSpanTask(task);
 
   return (
     <View style={[styles.card, task.favorite && styles.cardFavorite, past && styles.past]}>
@@ -46,8 +48,19 @@ export function TaskCard({ task, past }: Props) {
             {task.note}
           </Text>
         ) : null}
-        {(hasAlarm || hasSms) && (
+        {span ? (
+          <Text style={styles.spanRange} numberOfLines={1}>
+            {spanRangeLabel(task)}
+          </Text>
+        ) : null}
+        {(hasAlarm || hasSms || span) && (
           <View style={styles.badges}>
+            {span && (
+              <View style={styles.badge}>
+                <Ionicons name="calendar-outline" size={12} color={colors.primary} />
+                <Text style={styles.badgeText}>跨多天</Text>
+              </View>
+            )}
             {hasAlarm && (
               <View style={styles.badge}>
                 <Ionicons name="alarm-outline" size={12} color={colors.primary} />
@@ -158,6 +171,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     color: colors.textSecondary,
+  },
+  spanRange: {
+    fontSize: 11,
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
   },
   badges: {
     flexDirection: 'row',

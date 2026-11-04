@@ -11,7 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTasks } from '@/data/tasks-context';
+import { isSpanTask, spanProgress } from '@/data/tasks';
 import { AddTaskModal } from '@/components/AddTaskModal';
+import { SpanRemainingPanel } from '@/components/SpanRemainingPanel';
 import { TaskCard } from '@/components/TaskCard';
 import { colors, radius, shadow } from '@/theme';
 
@@ -36,6 +38,7 @@ export function DailyTasksScreen() {
   const [now, setNow] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [addOpen, setAddOpen] = useState(false);
+  const [spanOpen, setSpanOpen] = useState(false);
   const insets = useSafeAreaInsets();
   // 惰性初始化,实例稳定;不用 ref,避免渲染期读写
   const [slide] = useState(() => new Animated.Value(0));
@@ -77,11 +80,12 @@ export function DailyTasksScreen() {
     [switchDay],
   );
 
-  const { getTasks } = useTasks();
+  const { getTasks, getSpanTasks } = useTasks();
 
   // 任务只随日期(与任务状态)变化
   const dateKey = selectedDate.toDateString();
   const tasks = useMemo(() => getTasks(new Date(dateKey)), [dateKey, getTasks]);
+  const spanTasks = useMemo(() => getSpanTasks(new Date(dateKey)), [dateKey, getSpanTasks]);
 
   // 今天收藏(紧急)任务数:始终按真实今天统计,与当前浏览日期无关
   const todayFavoriteCount = useMemo(
@@ -93,7 +97,11 @@ export function DailyTasksScreen() {
   const isTodaySelected = label === '今天';
   const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const doneCount = isTodaySelected
-    ? tasks.filter((t) => t.endTime !== '' && t.endTime < nowHM).length
+    ? tasks.filter((t) =>
+        isSpanTask(t)
+          ? spanProgress(t, now)?.status === 'overdue'
+          : t.endTime !== '' && t.endTime < nowHM,
+      ).length
     : 0;
 
   return (
@@ -156,19 +164,49 @@ export function DailyTasksScreen() {
       <Animated.View style={[styles.body, { transform: [{ translateX: slide }] }]}>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
           <View style={styles.sectionRow}>
-            <Text style={styles.sectionLabel}>当日任务</Text>
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionLabel}>当日任务</Text>
+              <Pressable
+                onPress={() => setSpanOpen((open) => !open)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="剩余时间"
+                accessibilityState={{ expanded: spanOpen }}
+                style={[styles.spanToggle, spanOpen && styles.spanToggleActive]}
+              >
+                <Ionicons
+                  name="time-outline"
+                  size={12}
+                  color={spanOpen ? colors.primary : colors.textSecondary}
+                />
+                <Text style={[styles.spanToggleText, spanOpen && styles.spanToggleTextActive]}>
+                  剩余时间
+                </Text>
+                <Ionicons
+                  name={spanOpen ? 'chevron-up' : 'chevron-down'}
+                  size={11}
+                  color={spanOpen ? colors.primary : colors.textMuted}
+                />
+              </Pressable>
+            </View>
             <Text style={styles.sectionCount}>
               {isTodaySelected && tasks.length > 0
                 ? `已过 ${doneCount} / 共 ${tasks.length}`
                 : `共 ${tasks.length} 项`}
             </Text>
           </View>
+          {spanOpen ? <SpanRemainingPanel tasks={spanTasks} /> : null}
           <View style={styles.list}>
             {tasks.map((t) => (
               <TaskCard
                 key={t.id}
                 task={t}
-                past={isTodaySelected && t.endTime !== '' && t.endTime < nowHM}
+                past={
+                  isTodaySelected &&
+                  (isSpanTask(t)
+                    ? spanProgress(t, now)?.status === 'overdue'
+                    : t.endTime !== '' && t.endTime < nowHM)
+                }
               />
             ))}
             {tasks.length === 0 && (
@@ -320,10 +358,35 @@ const styles = StyleSheet.create({
   },
   sectionRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
     paddingHorizontal: 2,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  spanToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  spanToggleActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  spanToggleText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  spanToggleTextActive: {
+    color: colors.primary,
   },
   sectionLabel: {
     fontSize: 15,

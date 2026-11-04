@@ -11,18 +11,45 @@ import {
 } from 'react-native';
 import { reminderLabel } from '@/data/reminder-options';
 import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
-import { dateKeyOf, type Task } from '@/data/tasks';
+import { dateKeyOf, parseDateKey, type Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import {
   ensureExactAlarmPermission,
   ensureNotificationPermission,
   NOTIFICATIONS_SUPPORTED,
 } from '@/notifications';
+import { DateRangeModal } from './DateRangeModal';
 import { ReminderTimeModal } from './ReminderTimeModal';
 import { TimeRangeModal } from './TimeRangeModal';
 
 const ACCENT = '#4F46E5';
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** 日期键展示:同年省略年份,跨年显示完整年份 */
+function dateLabel(key: string): string {
+  const date = parseDateKey(key);
+  if (!date) return key;
+  const currentYear = new Date().getFullYear();
+  if (date.getFullYear() === currentYear) {
+    return `${date.getMonth() + 1}月${date.getDate()}日`;
+  }
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+/** 日期键加天数,返回新的日期键 */
+function addDaysToKey(key: string, days: number): string {
+  const date = parseDateKey(key) ?? new Date();
+  date.setDate(date.getDate() + days);
+  return dateKeyOf(date);
+}
+
+/** 比较两个日期键,返回毫秒差;非法日期视为相等 */
+function compareDateKeys(a: string, b: string): number {
+  const da = parseDateKey(a);
+  const db = parseDateKey(b);
+  if (!da || !db) return 0;
+  return da.getTime() - db.getTime();
+}
 
 interface Props {
   visible: boolean;
@@ -48,6 +75,10 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
   const [smsRemindSound, setSmsRemindSound] = useState(DEFAULT_REMINDER_SOUND);
   const [smsReminderOpen, setSmsReminderOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
+  const [kind, setKind] = useState<'short' | 'span'>('short');
+  const [startDateKey, setStartDateKey] = useState('');
+  const [endDateKey, setEndDateKey] = useState('');
+  const [dateOpen, setDateOpen] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -55,10 +86,15 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
+      const isSpan = editTask?.kind === 'span';
+      const baseKey = dateKeyOf(date ?? new Date());
       setTitle(editTask?.title ?? '');
       setNote(editTask?.note ?? '');
       setStartTime(editTask?.startTime ?? '09:00');
       setEndTime(editTask?.endTime ?? '09:30');
+      setKind(isSpan ? 'span' : 'short');
+      setStartDateKey(editTask?.startDateKey ?? baseKey);
+      setEndDateKey(editTask?.endDateKey ?? addDaysToKey(editTask?.startDateKey ?? baseKey, 1));
       setRemind(editTask?.remindAdvanceMinutes ?? null);
       setRemindSound(editTask?.remindSound ?? DEFAULT_REMINDER_SOUND);
       setReminderOpen(false);
@@ -66,10 +102,20 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
       setSmsRemindSound(editTask?.smsRemindSound ?? DEFAULT_REMINDER_SOUND);
       setSmsReminderOpen(false);
       setTimeOpen(false);
+      setDateOpen(false);
       setError('');
       setConfirmDelete(false);
     }
   }
+
+  /** 切换到跨多天时保证结束日期不早于开始日期 */
+  const selectKind = (next: 'short' | 'span') => {
+    setKind(next);
+    setError('');
+    if (next === 'span' && compareDateKeys(endDateKey, startDateKey) < 0) {
+      setEndDateKey(startDateKey);
+    }
+  };
 
   const confirm = async () => {
     const t = title.trim();
@@ -77,8 +123,39 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
       setError('请输入任务名');
       return;
     }
-    if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime) || endTime <= startTime) {
-      setError('时间格式应为 HH:mm,且结束时间晚于起始时间');
+    if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
+      setError('时间格式应为 HH:mm');
+      return;
+    }
+    if (kind === 'span') {
+      const startDate = parseDateKey(startDateKey);
+      const endDate = parseDateKey(endDateKey);
+      if (!startDate || !endDate) {
+        setError('请设置开始和结束日期');
+        return;
+      }
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      const startAt = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        sh,
+        sm,
+      );
+      const endAt = new Date(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        eh,
+        em,
+      );
+      if (endAt.getTime() <= startAt.getTime()) {
+        setError('跨多天任务的结束时间需晚于开始时间');
+        return;
+      }
+    } else if (endTime <= startTime) {
+      setError('结束时间需晚于起始时间');
       return;
     }
     // 设置提醒前确认通知权限,避免"设了却不响"
@@ -98,21 +175,27 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
       startTime,
       endTime,
       note: note.trim() || undefined,
+      kind: kind === 'span' ? ('span' as const) : ('short' as const),
+      startDateKey: kind === 'span' ? startDateKey : undefined,
+      endDateKey: kind === 'span' ? endDateKey : undefined,
       remindAdvanceMinutes: remind ?? undefined,
       remindSound: remind != null ? remindSound : undefined,
       smsRemindAdvanceMinutes: smsRemind ?? undefined,
       smsRemindSound: smsRemind != null ? smsRemindSound : undefined,
     };
     if (editTask) {
-      // 编辑模式:覆盖保存原任务,日期与收藏状态保持不变
-      updateTask(editTask.id, fields);
+      // 编辑模式:覆盖保存原任务;跨多天任务开始日期变化时迁移到新分组
+      updateTask(editTask.id, fields, kind === 'span' ? startDateKey : undefined);
     } else {
-      if (!date) {
+      if (!date && kind === 'short') {
         setError('缺少任务日期');
         return;
       }
-      const task: Task = { id: `${dateKeyOf(date)}-t${Date.now()}`, ...fields };
-      addTask(date, task);
+      const startDate =
+        kind === 'span' ? parseDateKey(startDateKey) ?? date ?? new Date() : (date as Date);
+      // 任务 id 用开始日期键生成,跨多天任务也落在开始日期分组
+      const task: Task = { id: `${dateKeyOf(startDate)}-t${Date.now()}`, ...fields };
+      addTask(startDate, task);
     }
     onClose();
   };
@@ -128,6 +211,29 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+          <View style={styles.segment}>
+            <Pressable
+              onPress={() => selectKind('short')}
+              style={[styles.segmentItem, kind === 'short' && styles.segmentItemActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: kind === 'short' }}
+            >
+              <Text style={[styles.segmentText, kind === 'short' && styles.segmentTextActive]}>
+                短时任务
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => selectKind('span')}
+              style={[styles.segmentItem, kind === 'span' && styles.segmentItemActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: kind === 'span' }}
+            >
+              <Text style={[styles.segmentText, kind === 'span' && styles.segmentTextActive]}>
+                跨多天任务
+              </Text>
+            </Pressable>
+          </View>
+
           <Text style={styles.label}>任务名</Text>
           <TextInput
             value={title}
@@ -148,6 +254,18 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
             placeholderTextColor="#9CA3AF"
             maxLength={100}
           />
+
+          {kind === 'span' ? (
+            <>
+              <Text style={styles.label}>日期</Text>
+              <Pressable style={styles.timeButton} onPress={() => setDateOpen(true)}>
+                <Text style={styles.timeButtonText}>
+                  {dateLabel(startDateKey)} ~ {dateLabel(endDateKey)}
+                </Text>
+                <Text style={styles.timeButtonHint}>点击设置</Text>
+              </Pressable>
+            </>
+          ) : null}
 
           <Text style={styles.label}>时间</Text>
           <Pressable style={styles.timeButton} onPress={() => setTimeOpen(true)}>
@@ -250,6 +368,19 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
         </Pressable>
       </Pressable>
 
+      <DateRangeModal
+        visible={dateOpen}
+        subtitle={title}
+        initialStartKey={startDateKey}
+        initialEndKey={endDateKey}
+        onCancel={() => setDateOpen(false)}
+        onConfirm={(start, end) => {
+          setStartDateKey(start);
+          setEndDateKey(end);
+          setDateOpen(false);
+        }}
+      />
+
       <TimeRangeModal
         visible={timeOpen}
         subtitle={title}
@@ -322,6 +453,34 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginBottom: 6,
     marginTop: 8,
+  },
+  segment: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    padding: 3,
+    gap: 3,
+    marginTop: 2,
+  },
+  segmentItem: {
+    flex: 1,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentItemActive: {
+    backgroundColor: '#FFFFFF',
+    boxShadow: '0 1px 2px rgba(17, 24, 39, 0.08)',
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  segmentTextActive: {
+    color: ACCENT,
+    fontWeight: '600',
   },
   input: {
     height: 40,

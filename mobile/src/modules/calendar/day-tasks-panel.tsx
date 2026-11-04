@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AddTaskModal } from '@/components/AddTaskModal';
+import { SpanRemainingPanel } from '@/components/SpanRemainingPanel';
 import { TaskCard } from '@/components/TaskCard';
+import { isSpanTask, spanProgress } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { colors, radius } from '@/theme';
 
@@ -14,9 +16,11 @@ interface Props {
 
 /** 选中日期下方的「当日代办事项」面板:展示每日任务模块中该日期的任务 */
 export function DayTasksPanel({ date }: Props) {
-  const { getTasks } = useTasks();
+  const { getTasks, getSpanTasks } = useTasks();
   const [addOpen, setAddOpen] = useState(false);
+  const [spanOpen, setSpanOpen] = useState(false);
   const tasks = getTasks(date);
+  const spanTasks = getSpanTasks(date);
 
   const now = new Date();
   const isToday =
@@ -35,6 +39,28 @@ export function DayTasksPanel({ date }: Props) {
           <View style={styles.countPill}>
             <Text style={styles.countText}>{tasks.length}</Text>
           </View>
+          <Pressable
+            onPress={() => setSpanOpen((open) => !open)}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel="剩余时间"
+            accessibilityState={{ expanded: spanOpen }}
+            style={[styles.spanToggle, spanOpen && styles.spanToggleActive]}
+          >
+            <Ionicons
+              name="time-outline"
+              size={12}
+              color={spanOpen ? colors.primary : colors.textSecondary}
+            />
+            <Text style={[styles.spanToggleText, spanOpen && styles.spanToggleTextActive]}>
+              剩余时间
+            </Text>
+            <Ionicons
+              name={spanOpen ? 'chevron-up' : 'chevron-down'}
+              size={11}
+              color={spanOpen ? colors.primary : colors.textMuted}
+            />
+          </Pressable>
         </View>
         <Pressable
           onPress={() => setAddOpen(true)}
@@ -47,6 +73,7 @@ export function DayTasksPanel({ date }: Props) {
           <Text style={styles.addButtonText}>新增</Text>
         </Pressable>
       </View>
+      {spanOpen ? <SpanRemainingPanel tasks={spanTasks} /> : null}
       {tasks.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="sunny-outline" size={28} color={colors.textMuted} />
@@ -59,7 +86,12 @@ export function DayTasksPanel({ date }: Props) {
             <TaskCard
               key={t.id}
               task={t}
-              past={isToday && t.endTime !== '' && t.endTime < nowHM}
+              past={
+                isToday &&
+                (isSpanTask(t)
+                  ? spanProgress(t, now)?.status === 'overdue'
+                  : t.endTime !== '' && t.endTime < nowHM)
+              }
             />
           ))}
         </View>
@@ -104,6 +136,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
     fontVariant: ['tabular-nums'],
+  },
+  spanToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    height: 24,
+    paddingHorizontal: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  spanToggleActive: {
+    backgroundColor: colors.primarySoft,
+  },
+  spanToggleText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+  spanToggleTextActive: {
+    color: colors.primary,
   },
   addButton: {
     flexDirection: 'row',
