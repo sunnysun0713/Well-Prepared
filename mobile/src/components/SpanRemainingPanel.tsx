@@ -65,6 +65,9 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
               <Text style={styles.title} numberOfLines={1}>
                 {task.title}
               </Text>
+              <Text style={[styles.remaining, { color }]}>{text}</Text>
+            </View>
+            <View style={styles.metaRow}>
               <Text style={styles.dateRange} numberOfLines={1}>
                 ({spanDateRangeLabel(task)})
               </Text>
@@ -73,7 +76,6 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
                   {task.note}
                 </Text>
               ) : null}
-              <Text style={[styles.remaining, { color }]}>{text}</Text>
             </View>
             <View style={styles.track}>
               <View style={[styles.fill, { width, backgroundColor: color }]} />
@@ -107,21 +109,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   title: {
-    flexShrink: 1,
+    flex: 1,
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
   },
   remaining: {
-    marginLeft: 'auto',
     flexShrink: 0,
     fontSize: 12,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
   dateRange: {
-    flexShrink: 1,
+    flexShrink: 0,
     fontSize: 11,
     color: colors.textMuted,
     fontVariant: ['tabular-nums'],
