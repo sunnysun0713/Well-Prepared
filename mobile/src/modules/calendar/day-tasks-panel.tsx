@@ -12,10 +12,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
 interface Props {
   date: Date;
+  /** 跳转到其他日期(长时任务开始/结束日快捷入口) */
+  onJumpToDate?: (date: Date) => void;
 }
 
 /** 选中日期下方的「当日代办事项」面板:展示每日任务模块中该日期的任务 */
-export function DayTasksPanel({ date }: Props) {
+export function DayTasksPanel({ date, onJumpToDate }: Props) {
   const { getTasks, getSpanTasks } = useTasks();
   const [addOpen, setAddOpen] = useState(false);
   const [spanOpen, setSpanOpen] = useState(false);
@@ -75,7 +77,11 @@ export function DayTasksPanel({ date }: Props) {
         </Pressable>
       </View>
       {spanOpen ? (
-        <SpanRemainingPanel tasks={spanTasks} onPressTask={setEditingSpan} />
+        <SpanRemainingPanel
+          tasks={spanTasks}
+          onPressTask={setEditingSpan}
+          onJumpToDate={onJumpToDate}
+        />
       ) : null}
       {tasks.length === 0 ? (
         <View style={styles.empty}>

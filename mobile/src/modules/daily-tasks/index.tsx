@@ -67,6 +67,15 @@ export function DailyTasksScreen() {
   /** 回到今天(浏览其他日期时显示入口) */
   const goToday = useCallback(() => setSelectedDate(new Date()), []);
 
+  /** 跳到长时任务的开始/结束日:直接切换当前选中日期 */
+  const jumpToDate = useCallback(
+    (date: Date) => {
+      setSelectedDate(new Date(date));
+      slide.setValue(0);
+    },
+    [slide],
+  );
+
   // 左右滑动切日:仅当手势明显为横向时接管(纵向滚动不受影响)
   const panResponder = useMemo(
     () =>
@@ -193,7 +202,11 @@ export function DailyTasksScreen() {
             </Text>
           </View>
           {spanOpen ? (
-            <SpanRemainingPanel tasks={spanTasks} onPressTask={setEditingSpan} />
+            <SpanRemainingPanel
+              tasks={spanTasks}
+              onPressTask={setEditingSpan}
+              onJumpToDate={jumpToDate}
+            />
           ) : null}
           <View style={styles.list}>
             {tasks.map((t) => (

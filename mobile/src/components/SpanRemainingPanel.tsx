@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   formatRemaining,
+  parseDateKey,
   spanDateRangeLabel,
   spanProgress,
   type Task,
@@ -12,10 +14,12 @@ interface Props {
   tasks: Task[];
   /** 点卡片进入编辑 */
   onPressTask?: (task: Task) => void;
+  /** 跳转到指定日期(开始/结束日快捷入口) */
+  onJumpToDate?: (date: Date) => void;
 }
 
 /** 「长时任务」面板:剩余时长与进度条 */
-export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
+export function SpanRemainingPanel({ tasks, onPressTask, onJumpToDate }: Props) {
   const now = new Date();
 
   if (tasks.length === 0) {
@@ -52,15 +56,11 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
         const width = `${
           progress.status === 'overdue' ? 0 : Math.max(2, percent)
         }%` as const;
+        const startDate = task.startDateKey ? parseDateKey(task.startDateKey) : null;
+        const endDate = task.endDateKey ? parseDateKey(task.endDateKey) : null;
 
         return (
-          <Pressable
-            key={task.id}
-            onPress={() => onPressTask?.(task)}
-            accessibilityRole="button"
-            accessibilityLabel={`编辑长时任务 ${task.title}`}
-            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-          >
+          <View key={task.id} style={styles.card}>
             <View style={styles.topRow}>
               <Text style={styles.title} numberOfLines={1}>
                 {task.title}
@@ -75,10 +75,54 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
               ) : null}
               <Text style={[styles.remaining, { color }]}>{text}</Text>
             </View>
-            <View style={styles.track}>
-              <View style={[styles.fill, { width, backgroundColor: color }]} />
+            <View style={styles.bottomRow}>
+              <View style={styles.track}>
+                <View style={[styles.fill, { width, backgroundColor: color }]} />
+              </View>
+              {onJumpToDate && startDate ? (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onJumpToDate(startDate);
+                  }}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel="跳转到开始日"
+                  style={({ pressed }) => [styles.jumpChip, pressed && styles.pressed]}
+                >
+                  <Ionicons name="chevron-back" size={11} color={colors.primary} />
+                  <Text style={styles.jumpText}>开始</Text>
+                </Pressable>
+              ) : null}
+              {onJumpToDate && endDate ? (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onJumpToDate(endDate);
+                  }}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityLabel="跳转到结束日"
+                  style={({ pressed }) => [styles.jumpChip, pressed && styles.pressed]}
+                >
+                  <Text style={styles.jumpText}>结束</Text>
+                  <Ionicons name="chevron-forward" size={11} color={colors.primary} />
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onPressTask?.(task);
+                }}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={`编辑长时任务 ${task.title}`}
+                style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}
+              >
+                <Ionicons name="options-outline" size={15} color={colors.textMuted} />
+              </Pressable>
             </View>
-          </Pressable>
+          </View>
         );
       })}
     </View>
@@ -131,7 +175,33 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
   },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  jumpChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    height: 22,
+    paddingHorizontal: 7,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+  },
+  jumpText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  settingsButton: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   track: {
+    flex: 1,
     height: 6,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceMuted,

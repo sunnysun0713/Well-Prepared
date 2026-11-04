@@ -67,6 +67,13 @@ export function CalendarScreen() {
     setSelected(now);
   };
 
+  /** 跳转到指定日期:同步月份视图并选中该日 */
+  const jumpToDate = (date: Date) => {
+    setViewYear(date.getFullYear());
+    setViewMonth(date.getMonth());
+    setSelected(date);
+  };
+
   /** 是否同一天(忽略时分秒) */
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() &&
@@ -163,7 +170,7 @@ export function CalendarScreen() {
           onSelectDay={handleSelectDay}
         />
 
-        {selected && <DayTasksPanel date={selected} />}
+        {selected && <DayTasksPanel date={selected} onJumpToDate={jumpToDate} />}
 
         <WheelPickerModal
           visible={pickerOpen}
