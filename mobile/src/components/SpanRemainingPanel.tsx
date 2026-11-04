@@ -66,7 +66,7 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
                 {task.title}
               </Text>
               <Text style={styles.dateRange} numberOfLines={1}>
-                {spanDateRangeLabel(task)}
+                ({spanDateRangeLabel(task)})
               </Text>
               {task.note ? (
                 <Text style={styles.note} numberOfLines={1}>
