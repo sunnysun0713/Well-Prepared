@@ -111,6 +111,8 @@ interface TasksContextValue {
   getTasks: (date: Date) => Task[];
   /** 覆盖某天的跨多天任务,按开始日期升序 */
   getSpanTasks: (date: Date) => Task[];
+  /** 按 id 查找任务(派生任务据此找到所属长时任务) */
+  getTaskById: (id: string) => Task | null;
   /** 在指定日期新增任务 */
   addTask: (date: Date, task: Task) => void;
   /** 按任务 id 更新;跨多天任务改变开始日期时传 moveToDateKey 迁移分组 */
@@ -265,6 +267,18 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [state],
   );
 
+  /** 按 id 查找任务;不存在时返回 null */
+  const getTaskById = useCallback(
+    (id: string) => {
+      for (const tasks of Object.values(state)) {
+        const found = tasks.find((task) => task.id === id);
+        if (found) return found;
+      }
+      return null;
+    },
+    [state],
+  );
+
   const addTask = useCallback((date: Date, task: Task) => {
     const key = dateKeyOf(date);
     dispatch({ type: 'ADD_TASK', dateKey: key, task });
@@ -296,8 +310,8 @@ export function TasksProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ getTasks, getSpanTasks, addTask, updateTask, deleteTask }),
-    [getTasks, getSpanTasks, addTask, updateTask, deleteTask],
+    () => ({ getTasks, getSpanTasks, getTaskById, addTask, updateTask, deleteTask }),
+    [getTasks, getSpanTasks, getTaskById, addTask, updateTask, deleteTask],
   );
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;

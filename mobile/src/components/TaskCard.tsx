@@ -15,21 +15,29 @@ interface Props {
 
 /** 任务卡片:左侧时间列(点按改时间)+ 标题/备注 + 提醒标记 + 设置/收藏 */
 export function TaskCard({ task, past }: Props) {
-  const { updateTask } = useTasks();
+  const { updateTask, getTaskById } = useTasks();
   const [addOpen, setAddOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const hasTime = Boolean(task.startTime || task.endTime);
   const hasAlarm = task.remindAdvanceMinutes != null;
   const hasSms = task.smsRemindAdvanceMinutes != null;
+  // 长时任务派生的开始/结束任务:设置入口指向所属长时任务,而不是派生出来的短时任务
+  const spanParent = task.parentId ? getTaskById(task.parentId) : null;
+  const derived = Boolean(spanParent && task.spanRole);
+  const editTask = spanParent ?? task;
 
   return (
     <View style={[styles.card, task.favorite && styles.cardFavorite, past && styles.past]}>
       {hasTime && (
         <Pressable
-          onPress={() => setTimeOpen(true)}
+          onPress={() => (derived ? setAddOpen(true) : setTimeOpen(true))}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel={`修改时间,当前 ${task.startTime || '未设'} 至 ${task.endTime || '未设'}`}
+          accessibilityLabel={
+            derived
+              ? `编辑长时任务,当前 ${task.startTime || '未设'} 至 ${task.endTime || '未设'}`
+              : `修改时间,当前 ${task.startTime || '未设'} 至 ${task.endTime || '未设'}`
+          }
           style={({ pressed }) => [styles.timeCol, pressed && styles.pressed]}
         >
           <Text style={styles.time}>{task.startTime || '—'}</Text>
@@ -107,7 +115,7 @@ export function TaskCard({ task, past }: Props) {
           setTimeOpen(false);
         }}
       />
-      <AddTaskModal visible={addOpen} editTask={task} onClose={() => setAddOpen(false)} />
+      <AddTaskModal visible={addOpen} editTask={editTask} onClose={() => setAddOpen(false)} />
     </View>
   );
 }
