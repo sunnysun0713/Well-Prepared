@@ -27,6 +27,8 @@ export function TaskCard({ task, past, onJumpToDate }: Props) {
   const spanParent = task.parentId ? getTaskById(task.parentId) : null;
   const derived = Boolean(spanParent && task.spanRole);
   const editTask = spanParent ?? task;
+  // 派生任务没有自己的备注时沿用长时任务的备注(旧存档的派生任务也能显示)
+  const displayNote = task.note ?? spanParent?.note;
   // 开始任务跳到结束日,结束任务跳到开始日
   const jumpDate =
     spanParent && task.spanRole
@@ -65,9 +67,9 @@ export function TaskCard({ task, past, onJumpToDate }: Props) {
             </Text>
           ) : null}
         </View>
-        {task.note ? (
+        {displayNote ? (
           <Text style={styles.note} numberOfLines={2}>
-            {task.note}
+            {displayNote}
           </Text>
         ) : null}
         {(hasAlarm || hasSms) && (
