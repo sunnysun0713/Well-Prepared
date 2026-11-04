@@ -68,13 +68,13 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
               <Text style={styles.dateRange} numberOfLines={1}>
                 {spanDateRangeLabel(task)}
               </Text>
+              {task.note ? (
+                <Text style={styles.note} numberOfLines={1}>
+                  {task.note}
+                </Text>
+              ) : null}
               <Text style={[styles.remaining, { color }]}>{text}</Text>
             </View>
-            {task.note ? (
-              <Text style={styles.note} numberOfLines={2}>
-                {task.note}
-              </Text>
-            ) : null}
             <View style={styles.track}>
               <View style={[styles.fill, { width, backgroundColor: color }]} />
             </View>
@@ -127,8 +127,8 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   note: {
-    fontSize: 12,
-    lineHeight: 17,
+    flexShrink: 1,
+    fontSize: 11,
     color: colors.textSecondary,
   },
   track: {
