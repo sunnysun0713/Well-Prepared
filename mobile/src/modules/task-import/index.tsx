@@ -138,6 +138,10 @@ export function TaskImportScreen() {
         );
         return;
       }
+      if (tasks.length === 0) {
+        setImportNote('没有识别到可导入的任务');
+        return;
+      }
       setResult(tasks);
       setResultOpen(true);
     } catch (e) {

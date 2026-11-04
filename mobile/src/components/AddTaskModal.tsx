@@ -57,49 +57,86 @@ interface Props {
   date?: Date;
   /** 编辑模式:要覆盖保存的任务;不传为新增 */
   editTask?: Task;
+  /** 预填值(导入任务时使用),不写入任务层;与 editTask 二选一 */
+  initialTask?: Task;
+  /** 固定任务类型,不显示短时/长时切换(导入任务用) */
+  lockKind?: boolean;
+  /** 标题下的进度提示,如「第 1 / 3 条」 */
+  progressText?: string;
+  /** 确认按钮文案,默认「保存/添加」 */
+  submitLabel?: string;
+  /** 导入模式:提交时交给调用方写入任务(不再走默认新增/编辑) */
+  onSubmit?: (task: Task, startDate: Date) => void;
+  /** 导入模式:跳过当前条目 */
+  onSkip?: () => void;
   onClose: () => void;
 }
 
 /** 新增/编辑任务弹窗:任务名 / 备注 / 时间 / 闹钟提醒 / 短信提醒 */
-export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
+export function AddTaskModal({
+  visible,
+  date,
+  editTask,
+  initialTask,
+  lockKind,
+  progressText,
+  submitLabel,
+  onSubmit,
+  onSkip,
+  onClose,
+}: Props) {
   const { addTask, updateTask, deleteTask } = useTasks();
+  const source = initialTask ?? editTask;
+  const initialBaseKey = dateKeyOf(date ?? new Date());
   const [prevVisible, setPrevVisible] = useState(visible);
-  const [title, setTitle] = useState('');
-  const [note, setNote] = useState('');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('09:30');
-  const [remind, setRemind] = useState<number | null>(null);
-  const [remindSound, setRemindSound] = useState(DEFAULT_REMINDER_SOUND);
+  const [title, setTitle] = useState(source?.title ?? '');
+  const [note, setNote] = useState(source?.note ?? '');
+  const [startTime, setStartTime] = useState(source?.startTime ?? '09:00');
+  const [endTime, setEndTime] = useState(source?.endTime ?? '09:30');
+  const [remind, setRemind] = useState<number | null>(source?.remindAdvanceMinutes ?? null);
+  const [remindSound, setRemindSound] = useState(
+    source?.remindSound ?? DEFAULT_REMINDER_SOUND,
+  );
   const [reminderOpen, setReminderOpen] = useState(false);
-  const [smsRemind, setSmsRemind] = useState<number | null>(null);
-  const [smsRemindSound, setSmsRemindSound] = useState(DEFAULT_REMINDER_SOUND);
+  const [smsRemind, setSmsRemind] = useState<number | null>(
+    source?.smsRemindAdvanceMinutes ?? null,
+  );
+  const [smsRemindSound, setSmsRemindSound] = useState(
+    source?.smsRemindSound ?? DEFAULT_REMINDER_SOUND,
+  );
   const [smsReminderOpen, setSmsReminderOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
-  const [kind, setKind] = useState<'short' | 'span'>('short');
-  const [startDateKey, setStartDateKey] = useState('');
-  const [endDateKey, setEndDateKey] = useState('');
+  const [kind, setKind] = useState<'short' | 'span'>(
+    source?.kind === 'span' ? 'span' : 'short',
+  );
+  const [startDateKey, setStartDateKey] = useState(
+    source?.startDateKey ?? initialBaseKey,
+  );
+  const [endDateKey, setEndDateKey] = useState(
+    source?.endDateKey ?? addDaysToKey(source?.startDateKey ?? initialBaseKey, 1),
+  );
   const [dateOpen, setDateOpen] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // 打开弹窗时重置表单:编辑模式预填任务当前值,新增模式用默认值(渲染期间派生,避免 effect 内 setState)
+  // 打开弹窗时重置表单:编辑/导入预填任务当前值,新增模式用默认值(渲染期间派生,避免 effect 内 setState)
   if (visible !== prevVisible) {
     setPrevVisible(visible);
     if (visible) {
-      const isSpan = editTask?.kind === 'span';
+      const isSpan = source?.kind === 'span';
       const baseKey = dateKeyOf(date ?? new Date());
-      setTitle(editTask?.title ?? '');
-      setNote(editTask?.note ?? '');
-      setStartTime(editTask?.startTime ?? '09:00');
-      setEndTime(editTask?.endTime ?? '09:30');
+      setTitle(source?.title ?? '');
+      setNote(source?.note ?? '');
+      setStartTime(source?.startTime ?? '09:00');
+      setEndTime(source?.endTime ?? '09:30');
       setKind(isSpan ? 'span' : 'short');
-      setStartDateKey(editTask?.startDateKey ?? baseKey);
-      setEndDateKey(editTask?.endDateKey ?? addDaysToKey(editTask?.startDateKey ?? baseKey, 1));
-      setRemind(editTask?.remindAdvanceMinutes ?? null);
-      setRemindSound(editTask?.remindSound ?? DEFAULT_REMINDER_SOUND);
+      setStartDateKey(source?.startDateKey ?? baseKey);
+      setEndDateKey(source?.endDateKey ?? addDaysToKey(source?.startDateKey ?? baseKey, 1));
+      setRemind(source?.remindAdvanceMinutes ?? null);
+      setRemindSound(source?.remindSound ?? DEFAULT_REMINDER_SOUND);
       setReminderOpen(false);
-      setSmsRemind(editTask?.smsRemindAdvanceMinutes ?? null);
-      setSmsRemindSound(editTask?.smsRemindSound ?? DEFAULT_REMINDER_SOUND);
+      setSmsRemind(source?.smsRemindAdvanceMinutes ?? null);
+      setSmsRemindSound(source?.smsRemindSound ?? DEFAULT_REMINDER_SOUND);
       setSmsReminderOpen(false);
       setTimeOpen(false);
       setDateOpen(false);
@@ -191,6 +228,18 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
       smsRemindAdvanceMinutes: smsRemind ?? undefined,
       smsRemindSound: smsRemind != null ? smsRemindSound : undefined,
     };
+    if (onSubmit) {
+      // 导入模式:交给调用方写入任务,弹窗由调用方负责切换到下一条
+      if (!date && kind === 'short') {
+        setError('缺少任务日期');
+        return;
+      }
+      const startDate =
+        kind === 'span' ? parseDateKey(startDateKey) ?? date ?? new Date() : (date as Date);
+      const task: Task = { id: `${dateKeyOf(startDate)}-t${Date.now()}`, ...fields };
+      onSubmit(task, startDate);
+      return;
+    }
     if (editTask) {
       // 编辑模式:覆盖保存原任务;跨多天任务开始日期变化时迁移到新分组
       updateTask(editTask.id, fields, kind === 'span' ? startDateKey : undefined);
@@ -213,6 +262,7 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
           <Text style={styles.title}>{editTask ? '任务设置' : '新增任务'}</Text>
+          {progressText ? <Text style={styles.progress}>{progressText}</Text> : null}
 
           <ScrollView
             style={styles.body}
@@ -220,7 +270,7 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
             showsVerticalScrollIndicator={false}
           >
           {/* 编辑模式已确定任务类型,不再提供短时/长时切换,只保留当前类型的设置 */}
-          {!editTask ? (
+          {!editTask && !lockKind ? (
             <View style={styles.segment}>
               <Pressable
                 onPress={() => selectKind('short')}
@@ -342,9 +392,15 @@ export function AddTaskModal({ visible, date, editTask, onClose }: Props) {
               <Text style={styles.cancelText}>取消</Text>
             </Pressable>
             <Pressable style={[styles.button, styles.confirmButton]} onPress={confirm}>
-              <Text style={styles.confirmText}>{editTask ? '保存' : '添加'}</Text>
+              <Text style={styles.confirmText}>{submitLabel ?? (editTask ? '保存' : '添加')}</Text>
             </Pressable>
           </View>
+
+          {onSkip ? (
+            <Pressable style={styles.skipButton} onPress={onSkip}>
+              <Text style={styles.skipText}>跳过此条</Text>
+            </Pressable>
+          ) : null}
 
           {/* 删除入口:仅编辑模式,两步确认避免误删 */}
           {editTask ? (
@@ -460,6 +516,24 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     textAlign: 'center',
     marginBottom: 12,
+  },
+  progress: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  skipButton: {
+    marginTop: 8,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skipText: {
+    fontSize: 13,
+    color: '#6B7280',
   },
   label: {
     fontSize: 12,
