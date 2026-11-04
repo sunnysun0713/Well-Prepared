@@ -70,7 +70,7 @@ function reducer(state: TasksState, action: Action): TasksState {
 }
 
 interface TasksContextValue {
-  /** 某天的任务(含覆盖该天的跨多天任务),按起始时间升序 */
+  /** 某天的短时任务(长时任务只在「长时任务」面板展示),按起始时间升序 */
   getTasks: (date: Date) => Task[];
   /** 覆盖某天的跨多天任务,按开始日期升序 */
   getSpanTasks: (date: Date) => Task[];
@@ -197,21 +197,11 @@ export function TasksProvider({ children }: { children: ReactNode }) {
 
   const getTasks = useCallback(
     (date: Date) => {
-      const key = dateKeyOf(date);
-      const direct = state[key] ?? [];
-      const spans: Task[] = [];
-      const seen = new Set(direct.map((t) => t.id));
-      for (const [groupKey, tasks] of Object.entries(state)) {
-        if (groupKey === key) continue;
-        for (const task of tasks) {
-          if (seen.has(task.id) || !isSpanTask(task)) continue;
-          if (spanCoversDate(task, date)) {
-            seen.add(task.id);
-            spans.push(task);
-          }
-        }
-      }
-      return [...direct, ...spans].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      // 长时任务只出现在「长时任务」面板,当日列表只展示短时任务
+      const direct = state[dateKeyOf(date)] ?? [];
+      return direct
+        .filter((task) => !isSpanTask(task))
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
     },
     [state],
   );

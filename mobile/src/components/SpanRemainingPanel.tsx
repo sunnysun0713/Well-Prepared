@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   formatRemaining,
   spanProgress,
@@ -8,12 +8,14 @@ import {
 import { colors, radius } from '@/theme';
 
 interface Props {
-  /** 覆盖当前所选日期的跨多天任务 */
+  /** 覆盖当前所选日期的长时任务 */
   tasks: Task[];
+  /** 点卡片进入编辑 */
+  onPressTask?: (task: Task) => void;
 }
 
-/** 「剩余时间」面板:跨多天任务的剩余时长与进度条 */
-export function SpanRemainingPanel({ tasks }: Props) {
+/** 「长时任务」面板:剩余时长与进度条 */
+export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
   const now = new Date();
 
   if (tasks.length === 0) {
@@ -48,7 +50,13 @@ export function SpanRemainingPanel({ tasks }: Props) {
         const width = `${Math.max(2, Math.round(progress.ratio * 100))}%` as const;
 
         return (
-          <View key={task.id} style={styles.card}>
+          <Pressable
+            key={task.id}
+            onPress={() => onPressTask?.(task)}
+            accessibilityRole="button"
+            accessibilityLabel={`编辑长时任务 ${task.title}`}
+            style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+          >
             <View style={styles.topRow}>
               <Text style={styles.title} numberOfLines={1}>
                 {task.title}
@@ -61,7 +69,7 @@ export function SpanRemainingPanel({ tasks }: Props) {
             <View style={styles.track}>
               <View style={[styles.fill, { width, backgroundColor: color }]} />
             </View>
-          </View>
+          </Pressable>
         );
       })}
     </View>
@@ -81,6 +89,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 6,
+  },
+  pressed: {
+    opacity: 0.65,
   },
   topRow: {
     flexDirection: 'row',

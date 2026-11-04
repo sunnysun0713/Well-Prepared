@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AddTaskModal } from '@/components/AddTaskModal';
 import { SpanRemainingPanel } from '@/components/SpanRemainingPanel';
 import { TaskCard } from '@/components/TaskCard';
-import { isSpanTask, spanProgress } from '@/data/tasks';
+import type { Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { colors, radius } from '@/theme';
 
@@ -19,6 +19,7 @@ export function DayTasksPanel({ date }: Props) {
   const { getTasks, getSpanTasks } = useTasks();
   const [addOpen, setAddOpen] = useState(false);
   const [spanOpen, setSpanOpen] = useState(false);
+  const [editingSpan, setEditingSpan] = useState<Task | null>(null);
   const tasks = getTasks(date);
   const spanTasks = getSpanTasks(date);
 
@@ -73,7 +74,9 @@ export function DayTasksPanel({ date }: Props) {
           <Text style={styles.addButtonText}>新增</Text>
         </Pressable>
       </View>
-      {spanOpen ? <SpanRemainingPanel tasks={spanTasks} /> : null}
+      {spanOpen ? (
+        <SpanRemainingPanel tasks={spanTasks} onPressTask={setEditingSpan} />
+      ) : null}
       {tasks.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="sunny-outline" size={28} color={colors.textMuted} />
@@ -86,18 +89,18 @@ export function DayTasksPanel({ date }: Props) {
             <TaskCard
               key={t.id}
               task={t}
-              past={
-                isToday &&
-                (isSpanTask(t)
-                  ? spanProgress(t, now)?.status === 'overdue'
-                  : t.endTime !== '' && t.endTime < nowHM)
-              }
+              past={isToday && t.endTime !== '' && t.endTime < nowHM}
             />
           ))}
         </View>
       )}
 
       <AddTaskModal visible={addOpen} date={date} onClose={() => setAddOpen(false)} />
+      <AddTaskModal
+        visible={editingSpan !== null}
+        editTask={editingSpan ?? undefined}
+        onClose={() => setEditingSpan(null)}
+      />
     </View>
   );
 }

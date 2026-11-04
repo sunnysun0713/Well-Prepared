@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTasks } from '@/data/tasks-context';
-import { isSpanTask, spanProgress } from '@/data/tasks';
+import type { Task } from '@/data/tasks';
 import { AddTaskModal } from '@/components/AddTaskModal';
 import { SpanRemainingPanel } from '@/components/SpanRemainingPanel';
 import { TaskCard } from '@/components/TaskCard';
@@ -39,6 +39,7 @@ export function DailyTasksScreen() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [addOpen, setAddOpen] = useState(false);
   const [spanOpen, setSpanOpen] = useState(false);
+  const [editingSpan, setEditingSpan] = useState<Task | null>(null);
   const insets = useSafeAreaInsets();
   // 惰性初始化,实例稳定;不用 ref,避免渲染期读写
   const [slide] = useState(() => new Animated.Value(0));
@@ -97,11 +98,7 @@ export function DailyTasksScreen() {
   const isTodaySelected = label === '今天';
   const nowHM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const doneCount = isTodaySelected
-    ? tasks.filter((t) =>
-        isSpanTask(t)
-          ? spanProgress(t, now)?.status === 'overdue'
-          : t.endTime !== '' && t.endTime < nowHM,
-      ).length
+    ? tasks.filter((t) => t.endTime !== '' && t.endTime < nowHM).length
     : 0;
 
   return (
@@ -195,18 +192,15 @@ export function DailyTasksScreen() {
                 : `共 ${tasks.length} 项`}
             </Text>
           </View>
-          {spanOpen ? <SpanRemainingPanel tasks={spanTasks} /> : null}
+          {spanOpen ? (
+            <SpanRemainingPanel tasks={spanTasks} onPressTask={setEditingSpan} />
+          ) : null}
           <View style={styles.list}>
             {tasks.map((t) => (
               <TaskCard
                 key={t.id}
                 task={t}
-                past={
-                  isTodaySelected &&
-                  (isSpanTask(t)
-                    ? spanProgress(t, now)?.status === 'overdue'
-                    : t.endTime !== '' && t.endTime < nowHM)
-                }
+                past={isTodaySelected && t.endTime !== '' && t.endTime < nowHM}
               />
             ))}
             {tasks.length === 0 && (
@@ -237,6 +231,11 @@ export function DailyTasksScreen() {
       </Pressable>
 
       <AddTaskModal visible={addOpen} date={selectedDate} onClose={() => setAddOpen(false)} />
+      <AddTaskModal
+        visible={editingSpan !== null}
+        editTask={editingSpan ?? undefined}
+        onClose={() => setEditingSpan(null)}
+      />
     </View>
   );
 }
