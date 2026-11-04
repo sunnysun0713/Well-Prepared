@@ -202,11 +202,7 @@ export function DailyTasksScreen() {
             </Text>
           </View>
           {spanOpen ? (
-            <SpanRemainingPanel
-              tasks={spanTasks}
-              onPressTask={setEditingSpan}
-              onJumpToDate={jumpToDate}
-            />
+            <SpanRemainingPanel tasks={spanTasks} onPressTask={setEditingSpan} />
           ) : null}
           <View style={styles.list}>
             {tasks.map((t) => (
@@ -214,6 +210,7 @@ export function DailyTasksScreen() {
                 key={t.id}
                 task={t}
                 past={isTodaySelected && t.endTime !== '' && t.endTime < nowHM}
+                onJumpToDate={jumpToDate}
               />
             ))}
             {tasks.length === 0 && (

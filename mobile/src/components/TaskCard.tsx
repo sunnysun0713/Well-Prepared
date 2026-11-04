@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { Task } from '@/data/tasks';
+import { parseDateKey, type Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { colors, radius, shadow } from '@/theme';
 import { AddTaskModal } from './AddTaskModal';
@@ -11,10 +11,12 @@ interface Props {
   task: Task;
   /** 时间已过,整卡弱化显示 */
   past: boolean;
+  /** 跳转到指定日期(派生任务的开始↔结束快捷入口) */
+  onJumpToDate?: (date: Date) => void;
 }
 
-/** 任务卡片:左侧时间列(点按改时间)+ 标题/备注 + 提醒标记 + 设置/收藏 */
-export function TaskCard({ task, past }: Props) {
+/** 任务卡片:左侧时间列(点按改时间)+ 标题/备注 + 提醒标记 + 跳转/设置/收藏 */
+export function TaskCard({ task, past, onJumpToDate }: Props) {
   const { updateTask, getTaskById } = useTasks();
   const [addOpen, setAddOpen] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
@@ -25,6 +27,13 @@ export function TaskCard({ task, past }: Props) {
   const spanParent = task.parentId ? getTaskById(task.parentId) : null;
   const derived = Boolean(spanParent && task.spanRole);
   const editTask = spanParent ?? task;
+  // 开始任务跳到结束日,结束任务跳到开始日
+  const jumpDate =
+    spanParent && task.spanRole
+      ? parseDateKey(
+          (task.spanRole === 'start' ? spanParent.endDateKey : spanParent.startDateKey) ?? '',
+        )
+      : null;
 
   return (
     <View style={[styles.card, task.favorite && styles.cardFavorite, past && styles.past]}>
@@ -80,6 +89,25 @@ export function TaskCard({ task, past }: Props) {
       </View>
 
       <View style={styles.actions}>
+        {jumpDate && onJumpToDate ? (
+          <Pressable
+            onPress={() => onJumpToDate(jumpDate)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={task.spanRole === 'start' ? '跳转到结束日' : '跳转到开始日'}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+          >
+            <Ionicons
+              name={
+                task.spanRole === 'start'
+                  ? 'arrow-forward-circle-outline'
+                  : 'arrow-back-circle-outline'
+              }
+              size={18}
+              color={colors.primary}
+            />
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={() => setAddOpen(true)}
           hitSlop={8}

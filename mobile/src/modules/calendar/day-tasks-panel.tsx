@@ -77,11 +77,7 @@ export function DayTasksPanel({ date, onJumpToDate }: Props) {
         </Pressable>
       </View>
       {spanOpen ? (
-        <SpanRemainingPanel
-          tasks={spanTasks}
-          onPressTask={setEditingSpan}
-          onJumpToDate={onJumpToDate}
-        />
+        <SpanRemainingPanel tasks={spanTasks} onPressTask={setEditingSpan} />
       ) : null}
       {tasks.length === 0 ? (
         <View style={styles.empty}>
@@ -96,6 +92,7 @@ export function DayTasksPanel({ date, onJumpToDate }: Props) {
               key={t.id}
               task={t}
               past={isToday && t.endTime !== '' && t.endTime < nowHM}
+              onJumpToDate={onJumpToDate}
             />
           ))}
         </View>
