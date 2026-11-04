@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
+  type ScrollViewInstance,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -39,7 +42,12 @@ interface PickedImage {
 export function TaskImportScreen() {
   const { settings, updateSettings } = useAiSettings();
   const { addTask } = useTasks();
-  const [image, setImage] = useState<PickedImage | null>(null);
+  const [images, setImages] = useState<PickedImage[]>([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const previewRef = useRef<ScrollViewInstance>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  // 预览区宽度:先按窗口估算,布局完成后用实际宽度校正(避免滚动条/内边距造成错位)
+  const [previewWidth, setPreviewWidth] = useState(Math.max(1, windowWidth - 32));
   const [error, setError] = useState('');
   const [importNote, setImportNote] = useState('');
   const [extracting, setExtracting] = useState(false);
@@ -80,21 +88,26 @@ export function TaskImportScreen() {
     };
   }, [error, importNote, noticesOpacity]);
 
-  /** 从相册选图:图库在安卓/Web 无需权限,iOS 由系统弹窗处理 */
+  /** 从相册选图:支持多选,整批替换当前已选图片 */
   const pickFromLibrary = async () => {
     setError('');
     setImportNote('');
     const picked = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.7,
+      allowsMultipleSelection: true,
+      selectionLimit: 0,
     });
-    if (!picked.canceled && picked.assets[0]) {
-      const a = picked.assets[0];
-      setImage({ uri: a.uri, width: a.width, height: a.height });
+    if (!picked.canceled && picked.assets.length > 0) {
+      setImages(
+        picked.assets.map((a) => ({ uri: a.uri, width: a.width, height: a.height })),
+      );
+      setPreviewIndex(0);
+      previewRef.current?.scrollTo({ x: 0, animated: false });
     }
   };
 
-  /** 拍照:相机必须用户授权,拒绝时提示且不覆盖已选图片 */
+  /** 拍照:必须用户授权,拒绝时提示且不覆盖已选图片;拍到的照片追加到已选列表 */
   const takePhoto = async () => {
     setError('');
     setImportNote('');
@@ -106,13 +119,19 @@ export function TaskImportScreen() {
     const shot = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!shot.canceled && shot.assets[0]) {
       const a = shot.assets[0];
-      setImage({ uri: a.uri, width: a.width, height: a.height });
+      const nextIndex = images.length;
+      setImages((prev) => [...prev, { uri: a.uri, width: a.width, height: a.height }]);
+      setPreviewIndex(nextIndex);
+      // 等新页面渲染后再滑到刚拍的照片
+      setTimeout(() => {
+        previewRef.current?.scrollTo({ x: nextIndex * previewWidth, animated: true });
+      }, 60);
     }
   };
 
-  /** AI 提取:压缩图片 → 视觉服务 → 归一化,成功后弹出结果列表 */
+  /** AI 提取:逐张压缩图片 → 视觉服务 → 归一化,合并所有图片的任务后走导入流程 */
   const runExtraction = async () => {
-    if (!image || extracting) return;
+    if (images.length === 0 || extracting) return;
     setError('');
     setImportNote('');
     setExtracting(true);
@@ -125,7 +144,10 @@ export function TaskImportScreen() {
       if (!preset) {
         throw new Error('请先在「模板」中添加一个提取模板');
       }
-      const tasks = await extractTasksFromImage(provider, apiKey, image, preset.prompt);
+      const results = await Promise.all(
+        images.map((img) => extractTasksFromImage(provider, apiKey, img, preset.prompt)),
+      );
+      const tasks = results.flat();
       // 自动导入模式:直接归一化写入,不弹确认列表
       if (settings.autoImport) {
         const count = commitImport(draftsOf(tasks, new Date()), addTask, {
@@ -152,7 +174,7 @@ export function TaskImportScreen() {
     }
   };
 
-  const canExtract = Boolean(image) && !extracting;
+  const canExtract = images.length > 0 && !extracting;
 
   return (
     <View style={styles.root}>
@@ -252,9 +274,46 @@ export function TaskImportScreen() {
           </Animated.View>
         ) : null}
 
-        {image ? (
-          <View style={styles.previewWrap}>
-            <Image source={{ uri: image.uri }} style={styles.preview} resizeMode="contain" />
+        {images.length > 0 ? (
+          <View
+            style={styles.previewWrap}
+            onLayout={(e) => {
+              const w = e.nativeEvent.layout.width;
+              if (w > 0 && Math.abs(w - previewWidth) > 0.5) setPreviewWidth(w);
+            }}
+          >
+            <ScrollView
+              ref={previewRef}
+              horizontal
+              pagingEnabled
+              snapToInterval={previewWidth}
+              decelerationRate="fast"
+              showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              style={styles.previewPager}
+              onScroll={(e) => {
+                const idx = Math.round(e.nativeEvent.contentOffset.x / previewWidth);
+                setPreviewIndex(Math.min(Math.max(idx, 0), images.length - 1));
+              }}
+            >
+              {images.map((img, index) => (
+                <View
+                  key={`${img.uri}-${index}`}
+                  style={{ width: previewWidth, height: '100%' }}
+                >
+                  <Image
+                    source={{ uri: img.uri }}
+                    style={styles.preview}
+                    resizeMode="contain"
+                  />
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.previewCounter} pointerEvents="none">
+              <Text style={styles.previewCounterText}>
+                {Math.min(previewIndex + 1, images.length)} / {images.length}
+              </Text>
+            </View>
           </View>
         ) : (
           <Pressable
@@ -266,9 +325,9 @@ export function TaskImportScreen() {
             <View style={styles.dropIconWrap}>
               <Ionicons name="scan-outline" size={34} color={colors.primary} />
             </View>
-            <Text style={styles.dropTitle}>选择图片或拍照</Text>
+            <Text style={styles.dropTitle}>选择图片(可多选)或拍照</Text>
             <Text style={styles.dropDesc}>
-              课程表、通知截图、手写日程……{'\n'}AI 帮你提取成一条条任务
+              可一次选择多张,左右滑动预览{'\n'}课程表、通知截图、手写日程……AI 帮你提取成任务
             </Text>
           </Pressable>
         )}
@@ -281,7 +340,9 @@ export function TaskImportScreen() {
           accessibilityRole="button"
         >
           <Ionicons name="images-outline" size={17} color={colors.text} />
-          <Text style={styles.secondaryText}>{image ? '重新选择' : '从相册选择'}</Text>
+          <Text style={styles.secondaryText}>
+            {images.length > 0 ? '重新选择' : '从相册选择'}
+          </Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.button, styles.secondaryButton, pressed && styles.pressed]}
@@ -319,7 +380,7 @@ export function TaskImportScreen() {
       </Pressable>
 
       <View style={styles.feedback}>
-        {!image && !error && !importNote ? (
+        {images.length === 0 && !error && !importNote ? (
           <Text style={styles.hint}>选好图片后点「AI 提取任务」开始识别</Text>
         ) : null}
       </View>
@@ -490,6 +551,24 @@ const styles = StyleSheet.create({
   },
   preview: {
     flex: 1,
+  },
+  previewPager: {
+    flex: 1,
+  },
+  previewCounter: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  previewCounterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontVariant: ['tabular-nums'],
   },
   actions: {
     flexDirection: 'row',
