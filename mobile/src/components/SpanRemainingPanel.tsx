@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   formatRemaining,
+  spanDateRangeLabel,
   spanProgress,
-  spanRangeLabel,
   type Task,
 } from '@/data/tasks';
 import { colors, radius } from '@/theme';
@@ -65,11 +65,11 @@ export function SpanRemainingPanel({ tasks, onPressTask }: Props) {
               <Text style={styles.title} numberOfLines={1}>
                 {task.title}
               </Text>
+              <Text style={styles.dateRange} numberOfLines={1}>
+                {spanDateRangeLabel(task)}
+              </Text>
               <Text style={[styles.remaining, { color }]}>{text}</Text>
             </View>
-            <Text style={styles.range} numberOfLines={1}>
-              {spanRangeLabel(task)}
-            </Text>
             <View style={styles.track}>
               <View style={[styles.fill, { width, backgroundColor: color }]} />
             </View>
@@ -100,21 +100,23 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
+    gap: 6,
   },
   title: {
-    flex: 1,
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '600',
     color: colors.text,
   },
   remaining: {
+    marginLeft: 'auto',
+    flexShrink: 0,
     fontSize: 12,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
-  range: {
+  dateRange: {
+    flexShrink: 1,
     fontSize: 11,
     color: colors.textMuted,
     fontVariant: ['tabular-nums'],

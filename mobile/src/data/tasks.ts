@@ -153,14 +153,29 @@ export function formatRemaining(ms: number): string {
   return `${mins} 分钟`;
 }
 
-/** 跨多天任务的日期范围文案 */
+/** 跨多天任务的日期范围文案;没有指定时刻时只显示日期 */
 export function spanRangeLabel(task: Task): string {
   const start = task.startDateKey ? parseDateKey(task.startDateKey) : null;
   const end = task.endDateKey ? parseDateKey(task.endDateKey) : null;
   if (!start || !end) return '';
   const startText = `${start.getMonth() + 1}月${start.getDate()}日`;
   const endText = `${end.getMonth() + 1}月${end.getDate()}日`;
-  return `${startText} ${task.startTime} → ${endText} ${task.endTime}`;
+  const startTimeText = task.startTime ? ` ${task.startTime}` : '';
+  const endTimeText = task.endTime ? ` ${task.endTime}` : '';
+  return `${startText}${startTimeText} → ${endText}${endTimeText}`;
+}
+
+/** 跨多天任务的纯日期范围文案(不含时刻),用于任务卡片标题行 */
+export function spanDateRangeLabel(task: Task): string {
+  const start = task.startDateKey ? parseDateKey(task.startDateKey) : null;
+  const end = task.endDateKey ? parseDateKey(task.endDateKey) : null;
+  if (!start || !end) return '';
+  const currentYear = new Date().getFullYear();
+  const format = (date: Date) =>
+    date.getFullYear() === currentYear
+      ? `${date.getMonth() + 1}月${date.getDate()}日`
+      : `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+  return `${format(start)} → ${format(end)}`;
 }
 
 /** 'HH:mm' 平移分钟数,结果限制在当天 00:00–23:59 */
