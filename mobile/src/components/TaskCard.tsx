@@ -97,15 +97,11 @@ export function TaskCard({ task, past, onJumpToDate }: Props) {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={task.spanRole === 'start' ? '跳转到结束日' : '跳转到开始日'}
-            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.jumpButton, pressed && styles.pressed]}
           >
             <Ionicons
-              name={
-                task.spanRole === 'start'
-                  ? 'arrow-forward-circle-outline'
-                  : 'arrow-back-circle-outline'
-              }
-              size={18}
+              name={task.spanRole === 'start' ? 'arrow-forward' : 'arrow-back'}
+              size={16}
               color={colors.primary}
             />
           </Pressable>
@@ -244,6 +240,17 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  /** 跳转按钮:与设置按钮同尺寸的方形描边框,内嵌箭头 */
+  jumpButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
