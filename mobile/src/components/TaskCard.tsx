@@ -101,7 +101,7 @@ export function TaskCard({ task, past, onJumpToDate }: Props) {
           >
             <Ionicons
               name={task.spanRole === 'start' ? 'arrow-forward' : 'arrow-back'}
-              size={16}
+              size={13}
               color={colors.primary}
             />
           </Pressable>
@@ -243,11 +243,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  /** 跳转按钮:与设置按钮同尺寸的方形描边框,内嵌箭头 */
+  /** 跳转按钮:方形描边框,内嵌箭头(比设置按钮视觉上小一圈) */
   jumpButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 5,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
     backgroundColor: colors.primarySoft,
