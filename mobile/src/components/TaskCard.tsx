@@ -102,7 +102,7 @@ export function TaskCard({ task, past, onJumpToDate }: Props) {
             <MaterialCommunityIcons
               name={task.spanRole === 'start' ? 'arrow-right-bold' : 'arrow-left-bold'}
               size={14}
-              color={colors.primary}
+              color={colors.textMuted}
             />
           </Pressable>
         ) : null}
@@ -249,8 +249,7 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: colors.primaryBorder,
-    backgroundColor: colors.primarySoft,
+    borderColor: colors.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
