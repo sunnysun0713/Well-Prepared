@@ -243,17 +243,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  /** 跳转按钮:方形描边框,内嵌箭头(比设置按钮视觉上小一圈) */
+  /** 跳转按钮:纯箭头,无外框(比设置按钮视觉上小一圈) */
   jumpButton: {
     width: 26,
     height: 26,
-    borderRadius: 5,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
-    /** 与 ⚙ 的视觉间距对齐 ⚙ 与 ★ 的图标间距 */
-    marginRight: 8,
   },
   pressed: {
     opacity: 0.55,
