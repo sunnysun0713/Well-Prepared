@@ -305,6 +305,8 @@ export function TaskImportScreen() {
               pagingEnabled
               snapToInterval={previewWidth}
               decelerationRate="fast"
+              // 松手后只翻相邻一页,避免快速滑动一次跳过多张
+              disableIntervalMomentum
               showsHorizontalScrollIndicator={false}
               scrollEventThrottle={16}
               style={styles.previewPager}
