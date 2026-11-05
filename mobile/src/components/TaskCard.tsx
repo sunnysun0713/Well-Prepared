@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { parseDateKey, type Task } from '@/data/tasks';
 import { useTasks } from '@/data/tasks-context';
 import { colors, radius, shadow } from '@/theme';
@@ -99,9 +99,9 @@ export function TaskCard({ task, past, onJumpToDate }: Props) {
             accessibilityLabel={task.spanRole === 'start' ? '跳转到结束日' : '跳转到开始日'}
             style={({ pressed }) => [styles.jumpButton, pressed && styles.pressed]}
           >
-            <Ionicons
-              name={task.spanRole === 'start' ? 'arrow-forward' : 'arrow-back'}
-              size={13}
+            <MaterialCommunityIcons
+              name={task.spanRole === 'start' ? 'arrow-right-bold' : 'arrow-left-bold'}
+              size={14}
               color={colors.primary}
             />
           </Pressable>
