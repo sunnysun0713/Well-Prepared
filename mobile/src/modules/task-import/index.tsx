@@ -18,6 +18,7 @@ import { commitImport, draftsOf } from '@/ai/import';
 import { getProvider } from '@/ai/providers';
 import { useAiSettings } from '@/ai/settings';
 import type { ExtractedTask } from '@/ai/types';
+import { ChipButton } from '@/components/ChipButton';
 import { useTasks } from '@/data/tasks-context';
 import { colors, radius, shadow } from '@/theme';
 import { AiSettingsModal } from './ai-settings-modal';
@@ -217,19 +218,15 @@ export function TaskImportScreen() {
 
       {/* 工具条:模板 / 规划 / 导入模式 */}
       <View style={styles.toolbar}>
-        <Pressable
-          style={({ pressed }) => [styles.toolChip, styles.toolChipPrimary, pressed && styles.pressed]}
+        <ChipButton
+          icon="albums-outline"
+          label={preset?.name ?? '模板'}
+          active={presetOpen}
+          expandable
           onPress={() => setPresetOpen(true)}
-          hitSlop={4}
-          accessibilityRole="button"
           accessibilityLabel={`选择模板,当前 ${preset?.name ?? '无'}`}
-        >
-          <Ionicons name="albums-outline" size={14} color={colors.primary} />
-          <Text style={[styles.toolChipText, styles.toolChipTextPrimary]} numberOfLines={1}>
-            {preset?.name ?? '模板'}
-          </Text>
-          <Ionicons name="chevron-down" size={12} color={colors.primary} />
-        </Pressable>
+          style={styles.presetChip}
+        />
         <Pressable
           style={({ pressed }) => [
             styles.toolChip,
@@ -475,10 +472,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     flexShrink: 1,
   },
-  toolChipPrimary: {
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.primaryBorder,
-    maxWidth: 140,
+  presetChip: {
+    maxWidth: 150,
   },
   toolChipWarning: {
     backgroundColor: colors.warningSoft,
@@ -489,9 +484,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
     flexShrink: 1,
-  },
-  toolChipTextPrimary: {
-    color: colors.primary,
   },
   toolChipTextWarning: {
     color: colors.warningText,

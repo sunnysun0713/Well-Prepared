@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AddTaskModal } from '@/components/AddTaskModal';
+import { ChipButton } from '@/components/ChipButton';
 import { SpanRemainingPanel } from '@/components/SpanRemainingPanel';
 import { TaskCard } from '@/components/TaskCard';
 import type { Task } from '@/data/tasks';
@@ -42,28 +43,13 @@ export function DayTasksPanel({ date, onJumpToDate }: Props) {
           <View style={styles.countPill}>
             <Text style={styles.countText}>{tasks.length}</Text>
           </View>
-          <Pressable
+          <ChipButton
+            icon="time-outline"
+            label="长时任务"
+            active={spanOpen}
+            expandable
             onPress={() => setSpanOpen((open) => !open)}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel="长时任务"
-            accessibilityState={{ expanded: spanOpen }}
-            style={[styles.spanToggle, spanOpen && styles.spanToggleActive]}
-          >
-            <Ionicons
-              name="time-outline"
-              size={12}
-              color={spanOpen ? colors.primary : colors.textSecondary}
-            />
-            <Text style={[styles.spanToggleText, spanOpen && styles.spanToggleTextActive]}>
-              长时任务
-            </Text>
-            <Ionicons
-              name={spanOpen ? 'chevron-up' : 'chevron-down'}
-              size={11}
-              color={spanOpen ? colors.primary : colors.textMuted}
-            />
-          </Pressable>
+          />
         </View>
         <Pressable
           onPress={() => setAddOpen(true)}
@@ -142,26 +128,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
     fontVariant: ['tabular-nums'],
-  },
-  spanToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    height: 24,
-    paddingHorizontal: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceMuted,
-  },
-  spanToggleActive: {
-    backgroundColor: colors.primarySoft,
-  },
-  spanToggleText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  spanToggleTextActive: {
-    color: colors.primary,
   },
   addButton: {
     flexDirection: 'row',

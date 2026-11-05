@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTasks } from '@/data/tasks-context';
 import type { Task } from '@/data/tasks';
 import { AddTaskModal } from '@/components/AddTaskModal';
+import { ChipButton } from '@/components/ChipButton';
 import { SpanRemainingPanel } from '@/components/SpanRemainingPanel';
 import { TaskCard } from '@/components/TaskCard';
 import { colors, radius, shadow } from '@/theme';
@@ -172,28 +173,13 @@ export function DailyTasksScreen() {
           <View style={styles.sectionRow}>
             <View style={styles.sectionTitleRow}>
               <Text style={styles.sectionLabel}>当日任务</Text>
-              <Pressable
+              <ChipButton
+                icon="time-outline"
+                label="长时任务"
+                active={spanOpen}
+                expandable
                 onPress={() => setSpanOpen((open) => !open)}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="长时任务"
-                accessibilityState={{ expanded: spanOpen }}
-                style={[styles.spanToggle, spanOpen && styles.spanToggleActive]}
-              >
-                <Ionicons
-                  name="time-outline"
-                  size={12}
-                  color={spanOpen ? colors.primary : colors.textSecondary}
-                />
-                <Text style={[styles.spanToggleText, spanOpen && styles.spanToggleTextActive]}>
-                  长时任务
-                </Text>
-                <Ionicons
-                  name={spanOpen ? 'chevron-up' : 'chevron-down'}
-                  size={11}
-                  color={spanOpen ? colors.primary : colors.textMuted}
-                />
-              </Pressable>
+              />
             </View>
             <Text style={styles.sectionCount}>
               {isTodaySelected && tasks.length > 0
@@ -376,26 +362,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  spanToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    height: 24,
-    paddingHorizontal: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceMuted,
-  },
-  spanToggleActive: {
-    backgroundColor: colors.primarySoft,
-  },
-  spanToggleText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  spanToggleTextActive: {
-    color: colors.primary,
   },
   sectionLabel: {
     fontSize: 15,
