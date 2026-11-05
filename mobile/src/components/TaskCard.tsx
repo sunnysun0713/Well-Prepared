@@ -252,6 +252,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
+    /** 与 ⚙ 的视觉间距对齐 ⚙ 与 ★ 的图标间距 */
+    marginRight: 8,
   },
   pressed: {
     opacity: 0.55,
