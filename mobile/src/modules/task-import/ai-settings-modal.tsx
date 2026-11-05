@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { PROVIDERS } from '@/ai/providers';
 import { useAiSettings } from '@/ai/settings';
 
@@ -50,74 +58,80 @@ export function AiSettingsModal({ visible, onClose }: Props) {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
-          <Text style={styles.title}>AI 设置</Text>
+      {/* behavior='height' 在安卓 Modal 内会挤压弹窗并渲染黑块,统一用 padding */}
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.title}>AI 设置</Text>
 
-          <Text style={styles.label}>视觉服务</Text>
-          <View style={styles.providerList}>
-            {PROVIDERS.map((p) => {
-              const active = providerId === p.id;
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => setProviderId(p.id)}
-                  style={[styles.chip, active && styles.chipActive]}
-                >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{p.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+            <Text style={styles.label}>视觉服务</Text>
+            <View style={styles.providerList}>
+              {PROVIDERS.map((p) => {
+                const active = providerId === p.id;
+                return (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => setProviderId(p.id)}
+                    style={[styles.chip, active && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{p.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-          {activeProvider.customModel ? (
-            <>
-              <Text style={styles.label}>模型名称</Text>
-              <TextInput
-                value={customModel}
-                onChangeText={setCustomModel}
-                style={styles.input}
-                placeholder="留空则使用默认视觉模型"
-                placeholderTextColor="#9CA3AF"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              {activeProvider.modelHint ? (
-                <Text style={styles.note}>{activeProvider.modelHint}</Text>
-              ) : null}
-            </>
-          ) : null}
+            {activeProvider.customModel ? (
+              <>
+                <Text style={styles.label}>模型名称</Text>
+                <TextInput
+                  value={customModel}
+                  onChangeText={setCustomModel}
+                  style={styles.input}
+                  placeholder="留空则使用默认视觉模型"
+                  placeholderTextColor="#9CA3AF"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {activeProvider.modelHint ? (
+                  <Text style={styles.note}>{activeProvider.modelHint}</Text>
+                ) : null}
+              </>
+            ) : null}
 
-          <Text style={styles.label}>API Key</Text>
-          <TextInput
-            value={apiKey}
-            onChangeText={(v) => setKeys((prev) => ({ ...prev, [providerId]: v }))}
-            style={styles.input}
-            placeholder="粘贴服务商提供的 API Key"
-            placeholderTextColor="#9CA3AF"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Text style={styles.note}>
-            不同视觉服务的 API Key 分开保存,切换服务不会互相覆盖。
-            真实接口在浏览器自测时可能受跨域限制,手机端无此问题
-          </Text>
+            <Text style={styles.label}>API Key</Text>
+            <TextInput
+              value={apiKey}
+              onChangeText={(v) => setKeys((prev) => ({ ...prev, [providerId]: v }))}
+              style={styles.input}
+              placeholder="粘贴服务商提供的 API Key"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Text style={styles.note}>
+              不同视觉服务的 API Key 分开保存,切换服务不会互相覆盖。
+              真实接口在浏览器自测时可能受跨域限制,手机端无此问题
+            </Text>
 
-          <View style={styles.actions}>
-            <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
-              <Text style={styles.cancelText}>取消</Text>
-            </Pressable>
-            <Pressable style={[styles.button, styles.confirmButton]} onPress={save}>
-              <Text style={styles.confirmText}>保存</Text>
-            </Pressable>
-          </View>
+            <View style={styles.actions}>
+              <Pressable style={[styles.button, styles.cancelButton]} onPress={onClose}>
+                <Text style={styles.cancelText}>取消</Text>
+              </Pressable>
+              <Pressable style={[styles.button, styles.confirmButton]} onPress={save}>
+                <Text style={styles.confirmText}>保存</Text>
+              </Pressable>
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
@@ -167,7 +181,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   input: {
-    height: 36,
+    height: 44,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
