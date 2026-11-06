@@ -340,7 +340,7 @@ export function AddTaskModal({
               accessibilityLabel="编辑备注"
               style={({ pressed }) => [styles.noteIconButton, pressed && styles.noteIconPressed]}
             >
-              <MaterialCommunityIcons name="file-outline" size={18} color={ACCENT} />
+              <MaterialCommunityIcons name="file-outline" size={16} color={ACCENT} />
             </Pressable>
           </View>
 
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
     outlineColor: 'transparent',
   },
   noteFieldFocused: {
-    outlineWidth: 2,
+    outlineWidth: 1,
     outlineColor: '#101010',
     outlineStyle: 'solid',
   },
@@ -606,10 +606,11 @@ const styles = StyleSheet.create({
     width: 1,
     height: 20,
     backgroundColor: '#E5E7EB',
+    marginLeft: 10,
   },
   noteIconButton: {
     height: '100%',
-    paddingHorizontal: 13,
+    paddingHorizontal: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
