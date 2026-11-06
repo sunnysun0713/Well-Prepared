@@ -319,7 +319,7 @@ export function AddTaskModal({
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="编辑备注"
-              style={({ pressed }) => [pressed && styles.noteIconPressed]}
+              style={({ pressed }) => [styles.noteIcon, pressed && styles.noteIconPressed]}
             >
               <Ionicons name="document-text-outline" size={15} color={ACCENT} />
             </Pressable>
@@ -575,6 +575,9 @@ const styles = StyleSheet.create({
   labelInRow: {
     marginBottom: 0,
     marginTop: 0,
+  },
+  noteIcon: {
+    transform: [{ translateX: -3 }, { translateY: 3 }],
   },
   noteIconPressed: {
     opacity: 0.5,
