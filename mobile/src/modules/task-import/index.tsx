@@ -39,6 +39,46 @@ interface PickedImage {
   height: number;
 }
 
+/** 同时识别的最大图片数:多图一次全发容易被服务商限流,内存也会暴涨 */
+const MAX_CONCURRENT_EXTRACTIONS = 3;
+/** 单张图片识别超时(毫秒):避免某个请求挂住导致整批一直转圈 */
+const IMAGE_EXTRACT_TIMEOUT_MS = 120_000;
+
+/** 创建跟随主取消信号、并带超时的子信号 */
+function linkAbort(signal: AbortSignal, timeoutMs: number) {
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  if (signal.aborted) controller.abort();
+  else signal.addEventListener('abort', onAbort);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    timedOut: () => !signal.aborted && controller.signal.aborted,
+    cleanup: () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+    },
+  };
+}
+
+/** 多图合并后按内容去重,避免重复截图/重叠内容生成重复任务 */
+function dedupeTasks(tasks: ExtractedTask[]): ExtractedTask[] {
+  const seen = new Set<string>();
+  return tasks.filter((task) => {
+    const key = [
+      task.title,
+      task.dateKey,
+      task.endDateKey ?? '',
+      task.startTime,
+      task.endTime,
+      task.note ?? '',
+    ].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** 任务载入模块主界面:选图/拍照 + 预览 + AI 提取任务 */
 export function TaskImportScreen() {
   const { settings, updateSettings } = useAiSettings();
@@ -48,6 +88,13 @@ export function TaskImportScreen() {
   const previewRef = useRef<ScrollViewInstance>(null);
   // 进行中的识别请求,取消时统一中断
   const abortRef = useRef<AbortController | null>(null);
+  // 离开模块(组件卸载)时终止识别,避免请求在后台继续跑
+  useEffect(
+    () => () => {
+      abortRef.current?.abort();
+    },
+    [],
+  );
   const { width: windowWidth } = useWindowDimensions();
   // 预览区宽度:先按窗口估算,布局完成后用实际宽度校正(避免滚动条/内边距造成错位)
   const [previewWidth, setPreviewWidth] = useState(Math.max(1, windowWidth - 32));
@@ -137,7 +184,7 @@ export function TaskImportScreen() {
     abortRef.current?.abort();
   };
 
-  /** AI 提取:逐张压缩图片 → 视觉服务 → 归一化,合并所有图片的任务后走导入流程 */
+  /** AI 提取:限并发逐张识别,单张失败不拖垮整批,合并去重后走导入流程 */
   const runExtraction = async () => {
     if (images.length === 0 || extracting) return;
     setError('');
@@ -154,19 +201,65 @@ export function TaskImportScreen() {
       if (!preset) {
         throw new Error('请先在「模板」中添加一个提取模板');
       }
-      const results = await Promise.all(
-        images.map((img) =>
-          extractTasksFromImage(provider, apiKey, img, preset.prompt, controller.signal),
+
+      // 整批共用一个「今天」,跨午夜时各图片的相对日期保持一致
+      const today = new Date();
+      const results: ExtractedTask[][] = [];
+      const failures: string[] = [];
+      let nextIndex = 0;
+
+      // 每个 worker 依次领取下一张图片;单张失败只记录,不影响其它图片
+      const worker = async () => {
+        while (!controller.signal.aborted) {
+          const index = nextIndex;
+          nextIndex += 1;
+          if (index >= images.length) return;
+          const request = linkAbort(controller.signal, IMAGE_EXTRACT_TIMEOUT_MS);
+          try {
+            results[index] = await extractTasksFromImage(
+              provider,
+              apiKey,
+              images[index],
+              preset.prompt,
+              request.signal,
+              today,
+            );
+          } catch (e) {
+            if (controller.signal.aborted) return;
+            failures.push(
+              request.timedOut()
+                ? `第 ${index + 1} 张识别超时`
+                : `第 ${index + 1} 张:${e instanceof Error ? e.message : '识别失败'}`,
+            );
+          } finally {
+            request.cleanup();
+          }
+        }
+      };
+      await Promise.all(
+        Array.from(
+          { length: Math.min(MAX_CONCURRENT_EXTRACTIONS, images.length) },
+          () => worker(),
         ),
       );
-      const tasks = results.flat();
+
       if (controller.signal.aborted) {
         setImportNote('已取消本次识别');
         return;
       }
+
+      const succeeded = images.length - failures.length;
+      if (succeeded === 0) {
+        setError(`全部 ${images.length} 张图片识别失败:${failures[0] ?? '请稍后重试'}`);
+        return;
+      }
+      if (failures.length > 0) {
+        setError(`${failures.length} 张图片识别失败(${failures[0]}),已处理其余 ${succeeded} 张`);
+      }
+      const tasks = dedupeTasks(results.flatMap((list) => list ?? []));
       // 自动导入模式:直接归一化写入,不弹确认列表
       if (settings.autoImport) {
-        const count = commitImport(draftsOf(tasks, new Date()), addTask, {
+        const count = commitImport(draftsOf(tasks, today), addTask, {
           remindAdvanceMinutes: settings.importReminderMinutes,
           remindSound: settings.importReminderSound,
           smsRemindAdvanceMinutes: settings.importSmsRemindMinutes,
@@ -354,9 +447,16 @@ export function TaskImportScreen() {
 
       <View style={styles.actions}>
         <Pressable
-          style={({ pressed }) => [styles.button, styles.secondaryButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.button,
+            styles.secondaryButton,
+            pressed && styles.pressed,
+            extracting && styles.buttonDisabled,
+          ]}
           onPress={pickFromLibrary}
+          disabled={extracting}
           accessibilityRole="button"
+          accessibilityState={{ disabled: extracting }}
         >
           <Ionicons name="images-outline" size={17} color={colors.text} />
           <Text style={styles.secondaryText}>
@@ -364,9 +464,16 @@ export function TaskImportScreen() {
           </Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.button, styles.secondaryButton, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.button,
+            styles.secondaryButton,
+            pressed && styles.pressed,
+            extracting && styles.buttonDisabled,
+          ]}
           onPress={takePhoto}
+          disabled={extracting}
           accessibilityRole="button"
+          accessibilityState={{ disabled: extracting }}
         >
           <Ionicons name="camera-outline" size={17} color={colors.text} />
           <Text style={styles.secondaryText}>拍照</Text>

@@ -8,17 +8,21 @@ export interface ImageRef {
   height: number;
 }
 
-/** 处理失败时返回空串 */
+/** 处理失败时返回空串,由调用方统一提示,避免单张坏图中断整批识别 */
 export async function resizeImageToBase64(image: ImageRef, maxWidth = 1280): Promise<string> {
-  const ctx = ImageManipulator.manipulate(image.uri);
-  if (image.width > maxWidth) {
-    ctx.resize({ width: maxWidth });
+  try {
+    const ctx = ImageManipulator.manipulate(image.uri);
+    if (image.width > maxWidth) {
+      ctx.resize({ width: maxWidth });
+    }
+    const rendered = await ctx.renderAsync();
+    const result = await rendered.saveAsync({
+      base64: true,
+      compress: 0.8,
+      format: SaveFormat.JPEG,
+    });
+    return result.base64 ?? '';
+  } catch {
+    return '';
   }
-  const rendered = await ctx.renderAsync();
-  const result = await rendered.saveAsync({
-    base64: true,
-    compress: 0.8,
-    format: SaveFormat.JPEG,
-  });
-  return result.base64 ?? '';
 }

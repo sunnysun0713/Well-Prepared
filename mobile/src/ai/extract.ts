@@ -12,13 +12,14 @@ export async function extractTasksFromImage(
   image: ImageRef,
   prompt: string,
   signal?: AbortSignal,
+  /** 统一传入的「今天」,多图批次跨午夜时相对日期保持一致 */
+  today: Date = new Date(),
 ): Promise<ExtractedTask[]> {
   const base64 = await resizeImageToBase64(image);
   if (!base64) {
     throw new Error('图片处理失败,请换一张图片试试');
   }
   const raw = await provider.extractTasks(base64, apiKey, prompt, signal);
-  const today = new Date();
   return raw
     .map((item) => normalizeTask(item, today))
     .filter((t): t is ExtractedTask => t !== null);
