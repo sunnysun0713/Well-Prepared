@@ -25,6 +25,8 @@ import { AiSettingsModal } from './ai-settings-modal';
 import { ImportConfirmModal } from './import-confirm-modal';
 import { ImportReminderModal } from './import-reminder-modal';
 import { PresetModal } from './preset-modal';
+import { linkAbort } from './request-timeout';
+import { startImportBackgroundService, stopImportBackgroundService } from './background';
 import { useImportSession } from './session';
 
 /** 导入模式选项:自动直接写入 / 手动弹窗确认 */
@@ -37,23 +39,6 @@ const MODE_OPTIONS = [
 const MAX_CONCURRENT_EXTRACTIONS = 3;
 /** 单张图片识别超时(毫秒):避免某个请求挂住导致整批一直转圈 */
 const IMAGE_EXTRACT_TIMEOUT_MS = 120_000;
-
-/** 创建跟随主取消信号、并带超时的子信号 */
-function linkAbort(signal: AbortSignal, timeoutMs: number) {
-  const controller = new AbortController();
-  const onAbort = () => controller.abort();
-  if (signal.aborted) controller.abort();
-  else signal.addEventListener('abort', onAbort);
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return {
-    signal: controller.signal,
-    timedOut: () => !signal.aborted && controller.signal.aborted,
-    cleanup: () => {
-      clearTimeout(timer);
-      signal.removeEventListener('abort', onAbort);
-    },
-  };
-}
 
 /** 多图合并后按内容去重,避免重复截图/重叠内容生成重复任务 */
 function dedupeTasks(tasks: ExtractedTask[]): ExtractedTask[] {
@@ -196,6 +181,9 @@ export function TaskImportScreen() {
         throw new Error('请先在「模板」中添加一个提取模板');
       }
 
+      // 识别期间挂前台服务:切到后台/锁屏后系统不会冻结进程,识别与自动导入可以继续
+      await startImportBackgroundService(images.length);
+
       // 整批共用一个「今天」,跨午夜时各图片的相对日期保持一致
       const today = new Date();
       const results: ExtractedTask[][] = [];
@@ -208,25 +196,41 @@ export function TaskImportScreen() {
           const index = nextIndex;
           nextIndex += 1;
           if (index >= images.length) return;
-          const request = linkAbort(controller.signal, IMAGE_EXTRACT_TIMEOUT_MS);
-          try {
-            results[index] = await extractTasksFromImage(
-              provider,
-              apiKey,
-              images[index],
-              preset.prompt,
-              request.signal,
-              today,
-            );
-          } catch (e) {
-            if (controller.signal.aborted) return;
-            failures.push(
-              request.timedOut()
-                ? `第 ${index + 1} 张识别超时`
-                : `第 ${index + 1} 张:${e instanceof Error ? e.message : '识别失败'}`,
-            );
-          } finally {
-            request.cleanup();
+
+          let attempt = 0;
+          for (;;) {
+            const request = linkAbort(controller.signal, IMAGE_EXTRACT_TIMEOUT_MS);
+            try {
+              results[index] = await extractTasksFromImage(
+                provider,
+                apiKey,
+                images[index],
+                preset.prompt,
+                request.signal,
+                today,
+              );
+              request.cleanup();
+              break;
+            } catch (e) {
+              const timedOut = request.timedOut();
+              request.cleanup();
+              if (controller.signal.aborted) return;
+              const message = e instanceof Error ? e.message : '识别失败';
+              // 切后台/网络波动导致的连接失败,回前台后自动重试一次
+              const retryable = !timedOut && /网络|network|fetch/i.test(message);
+              if (retryable && attempt === 0) {
+                attempt += 1;
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                if (controller.signal.aborted) return;
+                continue;
+              }
+              failures.push(
+                timedOut
+                  ? `第 ${index + 1} 张识别超时`
+                  : `第 ${index + 1} 张:${message}`,
+              );
+              break;
+            }
           }
         }
       };
@@ -277,6 +281,7 @@ export function TaskImportScreen() {
       }
       setError(e instanceof Error ? e.message : '提取失败,请重试');
     } finally {
+      await stopImportBackgroundService();
       setExtracting(false);
       if (abortRef.current === controller) abortRef.current = null;
     }
