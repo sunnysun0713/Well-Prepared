@@ -103,7 +103,7 @@ export function DateRangeModal({
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>开始</Text>
-              <Text style={styles.sectionDate}>
+              <Text style={styles.sectionDate} numberOfLines={1}>
                 {startDate.getFullYear()}年{startDate.getMonth() + 1}月{startDate.getDate()}日
               </Text>
             </View>
@@ -117,7 +117,7 @@ export function DateRangeModal({
                   setStartY(y);
                   setStartD((d) => Math.min(d, daysInMonth(y, startM)));
                 }}
-                width={62}
+                width={70}
                 itemHeight={30}
                 visibleCount={3}
               />
@@ -150,7 +150,7 @@ export function DateRangeModal({
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>结束</Text>
-              <Text style={styles.sectionDate}>
+              <Text style={styles.sectionDate} numberOfLines={1}>
                 {endDate.getFullYear()}年{endDate.getMonth() + 1}月{endDate.getDate()}日
               </Text>
             </View>
@@ -164,7 +164,7 @@ export function DateRangeModal({
                   setEndY(y);
                   setEndD((d) => Math.min(d, daysInMonth(y, endM)));
                 }}
-                width={62}
+                width={70}
                 itemHeight={30}
                 visibleCount={3}
               />

@@ -25,7 +25,14 @@ const WheelItem = memo(function WheelItem({
 }: WheelItemProps) {
   return (
     <Pressable onPress={onPress} style={[styles.item, { height: itemHeight }]}>
-      <Text style={[styles.itemText, active && styles.itemTextActive]}>{option}</Text>
+      {/* 固定宽高的滚轮项:禁止换行与系统字体缩放,避免手机上「2026年」折成两行 */}
+      <Text
+        numberOfLines={1}
+        allowFontScaling={false}
+        style={[styles.itemText, active && styles.itemTextActive]}
+      >
+        {option}
+      </Text>
     </Pressable>
   );
 });
