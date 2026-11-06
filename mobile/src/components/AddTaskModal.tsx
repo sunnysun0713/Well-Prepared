@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { reminderLabel } from '@/data/reminder-options';
 import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import { dateKeyOf, parseDateKey, type Task } from '@/data/tasks';
@@ -19,6 +20,7 @@ import {
   NOTIFICATIONS_SUPPORTED,
 } from '@/notifications';
 import { DateRangeModal } from './DateRangeModal';
+import { NoteEditorModal, NOTE_MAX_LENGTH } from './NoteEditorModal';
 import { ReminderTimeModal } from './ReminderTimeModal';
 import { TimeRangeModal } from './TimeRangeModal';
 
@@ -91,6 +93,7 @@ export function AddTaskModal({
   const [prevVisible, setPrevVisible] = useState(visible);
   const [title, setTitle] = useState(source?.title ?? '');
   const [note, setNote] = useState(source?.note ?? '');
+  const [noteOpen, setNoteOpen] = useState(false);
   const [startTime, setStartTime] = useState(source?.startTime ?? '09:00');
   const [endTime, setEndTime] = useState(source?.endTime ?? '09:30');
   const [remind, setRemind] = useState<number | null>(source?.remindAdvanceMinutes ?? null);
@@ -140,6 +143,7 @@ export function AddTaskModal({
       setSmsReminderOpen(false);
       setTimeOpen(false);
       setDateOpen(false);
+      setNoteOpen(false);
       setError('');
       setConfirmDelete(false);
     }
@@ -308,14 +312,25 @@ export function AddTaskModal({
             autoFocus
           />
 
-          <Text style={styles.label}>备注</Text>
+          <View style={styles.labelRow}>
+            <Text style={[styles.label, styles.labelInRow]}>备注</Text>
+            <Pressable
+              onPress={() => setNoteOpen(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="编辑备注"
+              style={({ pressed }) => [pressed && styles.noteIconPressed]}
+            >
+              <Ionicons name="document-text-outline" size={15} color={ACCENT} />
+            </Pressable>
+          </View>
           <TextInput
             value={note}
             onChangeText={setNote}
             style={styles.input}
             placeholder="添加备注(可选)"
             placeholderTextColor="#9CA3AF"
-            maxLength={100}
+            maxLength={NOTE_MAX_LENGTH}
           />
 
           {kind === 'span' ? (
@@ -439,6 +454,13 @@ export function AddTaskModal({
         </View>
       </View>
 
+      <NoteEditorModal
+        visible={noteOpen}
+        value={note}
+        onClose={() => setNoteOpen(false)}
+        onSave={setNote}
+      />
+
       <DateRangeModal
         visible={dateOpen}
         subtitle={title}
@@ -542,6 +564,20 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginBottom: 6,
     marginTop: 8,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  labelInRow: {
+    marginBottom: 0,
+    marginTop: 0,
+  },
+  noteIconPressed: {
+    opacity: 0.5,
   },
   segment: {
     flexDirection: 'row',
