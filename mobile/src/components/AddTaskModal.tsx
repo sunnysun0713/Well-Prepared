@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { reminderLabel } from '@/data/reminder-options';
 import { DEFAULT_REMINDER_SOUND } from '@/data/reminder-sounds';
 import { dateKeyOf, parseDateKey, type Task } from '@/data/tasks';
@@ -316,12 +316,12 @@ export function AddTaskModal({
             <Text style={[styles.label, styles.labelInRow]}>备注</Text>
             <Pressable
               onPress={() => setNoteOpen(true)}
-              hitSlop={8}
+              hitSlop={12}
               accessibilityRole="button"
               accessibilityLabel="编辑备注"
               style={({ pressed }) => [styles.noteIcon, pressed && styles.noteIconPressed]}
             >
-              <Ionicons name="document-text-outline" size={15} color={ACCENT} />
+              <MaterialCommunityIcons name="file-outline" size={18} color={ACCENT} />
             </Pressable>
           </View>
           <TextInput
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   noteIcon: {
-    transform: [{ translateX: -3 }, { translateY: 3 }],
+    transform: [{ translateX: -3 }],
   },
   noteIconPressed: {
     opacity: 0.5,
