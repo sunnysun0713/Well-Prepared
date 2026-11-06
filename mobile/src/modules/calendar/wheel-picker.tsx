@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { WheelPicker } from '@/components/WheelPicker';
 import { colors, radius } from '@/theme';
@@ -48,7 +48,10 @@ export function WheelPickerModal({
 
   // 根据当前所选年月生成日选项;年月变化时天数可能变少,把日夹到有效范围
   const dayCount = getDayCount(tempYear, tempMonth);
-  const dayOptions = Array.from({ length: dayCount }, (_, i) => `${i + 1}日`);
+  const dayOptions = useMemo(
+    () => Array.from({ length: dayCount }, (_, i) => `${i + 1}日`),
+    [dayCount],
+  );
   const clampedDay = Math.min(tempDay, dayCount - 1);
 
   return (

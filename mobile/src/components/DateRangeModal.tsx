@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { dateKeyOf, parseDateKey } from '@/data/tasks';
 import { WheelPicker } from './WheelPicker';
@@ -68,18 +68,61 @@ export function DateRangeModal({
     startY,
     endY,
   );
-  const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => `${minYear + i}年`);
+  const years = useMemo(
+    () => Array.from({ length: maxYear - minYear + 1 }, (_, i) => `${minYear + i}年`),
+    [minYear, maxYear],
+  );
   const yearsFrom = minYear;
 
   const startDays = daysInMonth(startY, startM);
   const endDays = daysInMonth(endY, endM);
   const startDayIdx = Math.min(startD - 1, startDays - 1);
   const endDayIdx = Math.min(endD - 1, endDays - 1);
-  const startDayOptions = Array.from({ length: startDays }, (_, i) => `${i + 1}日`);
-  const endDayOptions = Array.from({ length: endDays }, (_, i) => `${i + 1}日`);
+  const startDayOptions = useMemo(
+    () => Array.from({ length: startDays }, (_, i) => `${i + 1}日`),
+    [startDays],
+  );
+  const endDayOptions = useMemo(
+    () => Array.from({ length: endDays }, (_, i) => `${i + 1}日`),
+    [endDays],
+  );
 
   const startDate = new Date(startY, startM, startDayIdx + 1);
   const endDate = new Date(endY, endM, endDayIdx + 1);
+
+  // 滚轮回调用 useCallback 保持引用稳定;否则快速滚动时每次选中都会重建全部滚轮项,造成抽搐
+  const changeStartYear = useCallback(
+    (i: number) => {
+      const y = yearsFrom + i;
+      setStartY(y);
+      setStartD((d) => Math.min(d, daysInMonth(y, startM)));
+    },
+    [yearsFrom, startM, setStartY, setStartD],
+  );
+  const changeStartMonth = useCallback(
+    (i: number) => {
+      setStartM(i);
+      setStartD((d) => Math.min(d, daysInMonth(startY, i)));
+    },
+    [startY, setStartM, setStartD],
+  );
+  const changeStartDay = useCallback((i: number) => setStartD(i + 1), [setStartD]);
+  const changeEndYear = useCallback(
+    (i: number) => {
+      const y = yearsFrom + i;
+      setEndY(y);
+      setEndD((d) => Math.min(d, daysInMonth(y, endM)));
+    },
+    [yearsFrom, endM, setEndY, setEndD],
+  );
+  const changeEndMonth = useCallback(
+    (i: number) => {
+      setEndM(i);
+      setEndD((d) => Math.min(d, daysInMonth(endY, i)));
+    },
+    [endY, setEndM, setEndD],
+  );
+  const changeEndDay = useCallback((i: number) => setEndD(i + 1), [setEndD]);
 
   const save = () => {
     if (endDate.getTime() < startDate.getTime()) {
@@ -112,11 +155,7 @@ export function DateRangeModal({
                 key={`${visible}-start-year`}
                 options={years}
                 value={startY - yearsFrom}
-                onChange={(i) => {
-                  const y = yearsFrom + i;
-                  setStartY(y);
-                  setStartD((d) => Math.min(d, daysInMonth(y, startM)));
-                }}
+                onChange={changeStartYear}
                 width={70}
                 itemHeight={30}
                 visibleCount={3}
@@ -125,19 +164,16 @@ export function DateRangeModal({
                 key={`${visible}-start-month`}
                 options={MONTHS}
                 value={startM}
-                onChange={(i) => {
-                  setStartM(i);
-                  setStartD((d) => Math.min(d, daysInMonth(startY, i)));
-                }}
+                onChange={changeStartMonth}
                 width={52}
                 itemHeight={30}
                 visibleCount={3}
               />
               <WheelPicker
-                key={`${visible}-start-day`}
+                key={`${visible}-start-day-${startDays}`}
                 options={startDayOptions}
                 value={startDayIdx}
-                onChange={(i) => setStartD(i + 1)}
+                onChange={changeStartDay}
                 width={52}
                 itemHeight={30}
                 visibleCount={3}
@@ -159,11 +195,7 @@ export function DateRangeModal({
                 key={`${visible}-end-year`}
                 options={years}
                 value={endY - yearsFrom}
-                onChange={(i) => {
-                  const y = yearsFrom + i;
-                  setEndY(y);
-                  setEndD((d) => Math.min(d, daysInMonth(y, endM)));
-                }}
+                onChange={changeEndYear}
                 width={70}
                 itemHeight={30}
                 visibleCount={3}
@@ -172,19 +204,16 @@ export function DateRangeModal({
                 key={`${visible}-end-month`}
                 options={MONTHS}
                 value={endM}
-                onChange={(i) => {
-                  setEndM(i);
-                  setEndD((d) => Math.min(d, daysInMonth(endY, i)));
-                }}
+                onChange={changeEndMonth}
                 width={52}
                 itemHeight={30}
                 visibleCount={3}
               />
               <WheelPicker
-                key={`${visible}-end-day`}
+                key={`${visible}-end-day-${endDays}`}
                 options={endDayOptions}
                 value={endDayIdx}
-                onChange={(i) => setEndD(i + 1)}
+                onChange={changeEndDay}
                 width={52}
                 itemHeight={30}
                 visibleCount={3}

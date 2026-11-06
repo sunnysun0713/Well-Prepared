@@ -67,6 +67,11 @@ export function WheelPicker({
   const lastSelected = useRef(value);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(false);
+  // onChange 用 ref 保存最新引用:父组件传内联函数时,快速滚动不会每次重建全部滚轮项
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // contentOffset 在部分平台(如 Web)挂载时不生效,挂载后强制滚动到初始位置(仅一次)
   useEffect(() => {
@@ -98,16 +103,13 @@ export function WheelPicker({
   );
 
   /** 仅在下标真正变化时更新状态与父组件,避免逐帧无效渲染 */
-  const applyIndex = useCallback(
-    (i: number) => {
-      if (i !== lastSelected.current) {
-        lastSelected.current = i;
-        setSelected(i);
-        onChange(i);
-      }
-    },
-    [onChange],
-  );
+  const applyIndex = useCallback((i: number) => {
+    if (i !== lastSelected.current) {
+      lastSelected.current = i;
+      setSelected(i);
+      onChangeRef.current(i);
+    }
+  }, []);
 
   /** 滚动停止后:校正到精确位置,避免两项各占一半卡在阴影里 */
   const settle = useCallback(
