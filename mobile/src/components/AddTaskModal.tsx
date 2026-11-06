@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
     outlineColor: 'transparent',
   },
   noteFieldFocused: {
-    outlineWidth: 1,
+    outlineWidth: 2,
     outlineColor: '#101010',
     outlineStyle: 'solid',
   },
