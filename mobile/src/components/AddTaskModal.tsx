@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -93,6 +92,7 @@ export function AddTaskModal({
   const initialBaseKey = dateKeyOf(date ?? new Date());
   const [prevVisible, setPrevVisible] = useState(visible);
   const [title, setTitle] = useState(source?.title ?? '');
+  const [titleFocused, setTitleFocused] = useState(false);
   const [note, setNote] = useState(source?.note ?? '');
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteFocused, setNoteFocused] = useState(false);
@@ -146,6 +146,7 @@ export function AddTaskModal({
       setTimeOpen(false);
       setDateOpen(false);
       setNoteOpen(false);
+      setTitleFocused(false);
       setNoteFocused(false);
       setError('');
       setConfirmDelete(false);
@@ -308,7 +309,9 @@ export function AddTaskModal({
           <TextInput
             value={title}
             onChangeText={setTitle}
-            style={styles.input}
+            onFocus={() => setTitleFocused(true)}
+            onBlur={() => setTitleFocused(false)}
+            style={[styles.input, titleFocused && styles.fieldFocused]}
             placeholder="要做什么?"
             placeholderTextColor="#9CA3AF"
             maxLength={50}
@@ -316,12 +319,7 @@ export function AddTaskModal({
           />
 
           <Text style={styles.label}>备注</Text>
-          <View
-            style={[
-              styles.noteField,
-              noteFocused && Platform.OS === 'web' && styles.noteFieldFocused,
-            ]}
-          >
+          <View style={[styles.noteField, noteFocused && styles.fieldFocused]}>
             <TextInput
               value={note}
               onChangeText={setNote}
@@ -340,7 +338,7 @@ export function AddTaskModal({
               accessibilityLabel="编辑备注"
               style={({ pressed }) => [styles.noteIconButton, pressed && styles.noteIconPressed]}
             >
-              <MaterialCommunityIcons name="file-outline" size={16} color={ACCENT} />
+              <MaterialCommunityIcons name="file-outline" size={18} color={ACCENT} />
             </Pressable>
           </View>
 
@@ -597,11 +595,6 @@ const styles = StyleSheet.create({
     outlineWidth: 0,
     outlineColor: 'transparent',
   },
-  noteFieldFocused: {
-    outlineWidth: 2,
-    outlineColor: '#101010',
-    outlineStyle: 'solid',
-  },
   noteDivider: {
     width: 1,
     height: 20,
@@ -653,6 +646,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 15,
     color: '#1F2937',
+    // 去掉浏览器自带焦点框,统一用 fieldFocused 的黑色边框
+    outlineStyle: 'solid',
+    outlineWidth: 0,
+    outlineColor: 'transparent',
+  },
+  fieldFocused: {
+    borderWidth: 2,
+    borderColor: '#101010',
   },
   timeButton: {
     flexDirection: 'row',
