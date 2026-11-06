@@ -1,0 +1,64 @@
+name: Build Android APK
+
+# 免费云端打 APK:EAS 免费额度用完时用 GitHub Actions 构建(公开仓库不计分钟数)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, low]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --no-install
+        env:
+          EXPO_NO_TELEMETRY: 1
+
+      # prebuild 生成的 release 默认用 android/app/debug.keystore 签名,
+      # 可独立安装;与 EAS 签名不同,覆盖安装旧 EAS 版本前需先卸载
+      - name: Build release APK
+        run: cd android && ./gradlew assembleRelease --no-daemon
+        env:
+          EXPO_NO_TELEMETRY: 1
+          EXPO_PUBLIC_SYNC_BASE_URL: http://139.9.137.180
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: youbei-android-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 90
