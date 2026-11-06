@@ -306,26 +306,28 @@ export function AddTaskModal({
           ) : null}
 
           <Text style={styles.label}>任务名</Text>
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            onFocus={() => setTitleFocused(true)}
-            onBlur={() => setTitleFocused(false)}
-            style={[styles.input, titleFocused && styles.fieldFocused]}
-            placeholder="要做什么?"
-            placeholderTextColor="#9CA3AF"
-            maxLength={50}
-            autoFocus
-          />
+          <View style={[styles.fieldBox, styles.titleField, titleFocused && styles.fieldFocused]}>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              onFocus={() => setTitleFocused(true)}
+              onBlur={() => setTitleFocused(false)}
+              style={styles.fieldInput}
+              placeholder="要做什么?"
+              placeholderTextColor="#9CA3AF"
+              maxLength={50}
+              autoFocus
+            />
+          </View>
 
           <Text style={styles.label}>备注</Text>
-          <View style={[styles.noteField, noteFocused && styles.fieldFocused]}>
+          <View style={[styles.fieldBox, styles.noteField, noteFocused && styles.fieldFocused]}>
             <TextInput
               value={note}
               onChangeText={setNote}
               onFocus={() => setNoteFocused(true)}
               onBlur={() => setNoteFocused(false)}
-              style={styles.noteInput}
+              style={styles.fieldInput}
               placeholder="添加备注(可选)"
               placeholderTextColor="#9CA3AF"
               maxLength={NOTE_MAX_LENGTH}
@@ -577,23 +579,7 @@ const styles = StyleSheet.create({
   noteField: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
     paddingLeft: 12,
-  },
-  noteInput: {
-    flex: 1,
-    height: '100%',
-    paddingVertical: 0,
-    fontSize: 15,
-    color: '#1F2937',
-    // 去掉浏览器给内层输入框画的方形焦点框,焦点框统一由外层备注框显示
-    outlineStyle: 'solid',
-    outlineWidth: 0,
-    outlineColor: 'transparent',
   },
   noteDivider: {
     width: 1,
@@ -638,12 +624,20 @@ const styles = StyleSheet.create({
     color: ACCENT,
     fontWeight: '600',
   },
-  input: {
+  fieldBox: {
     height: 40,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  titleField: {
     paddingHorizontal: 12,
+  },
+  fieldInput: {
+    flex: 1,
+    height: '100%',
+    paddingVertical: 0,
     fontSize: 15,
     color: '#1F2937',
     // 去掉浏览器自带焦点框,统一用 fieldFocused 的黑色边框
