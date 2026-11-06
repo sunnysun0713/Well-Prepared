@@ -313,21 +313,22 @@ export function AddTaskModal({
           />
 
           <Text style={styles.label}>备注</Text>
-          <View style={styles.noteRow}>
+          <View style={styles.noteField}>
             <TextInput
               value={note}
               onChangeText={setNote}
-              style={[styles.input, styles.noteInput]}
+              style={styles.noteInput}
               placeholder="添加备注(可选)"
               placeholderTextColor="#9CA3AF"
               maxLength={NOTE_MAX_LENGTH}
             />
+            <View style={styles.noteDivider} />
             <Pressable
               onPress={() => setNoteOpen(true)}
-              hitSlop={12}
+              hitSlop={4}
               accessibilityRole="button"
               accessibilityLabel="编辑备注"
-              style={({ pressed }) => [pressed && styles.noteIconPressed]}
+              style={({ pressed }) => [styles.noteIconButton, pressed && styles.noteIconPressed]}
             >
               <MaterialCommunityIcons name="file-outline" size={18} color={ACCENT} />
             </Pressable>
@@ -565,13 +566,33 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     marginTop: 8,
   },
-  noteRow: {
+  noteField: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    height: 40,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingLeft: 12,
   },
   noteInput: {
     flex: 1,
+    height: '100%',
+    paddingVertical: 0,
+    fontSize: 15,
+    color: '#1F2937',
+  },
+  noteDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#E5E7EB',
+  },
+  noteIconButton: {
+    height: '100%',
+    paddingHorizontal: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noteIconPressed: {
     opacity: 0.5,
