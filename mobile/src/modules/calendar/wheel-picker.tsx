@@ -73,9 +73,9 @@ export function WheelPickerModal({
               onChange={setTempMonth}
               width={72}
             />
-            {/* 天数组变化时用 key 重挂载,让滚轮回到新的有效位置 */}
+            {/* 天数组变化时不重挂载:WheelPicker 内部会把高亮夹到最后一个有效项,
+                重挂载会在挂载瞬间触发滚动事件,把日期覆盖成 1 日 */}
             <WheelPicker
-              key={dayCount}
               options={dayOptions}
               value={clampedDay}
               onChange={setTempDay}
