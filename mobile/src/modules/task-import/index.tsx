@@ -25,19 +25,13 @@ import { AiSettingsModal } from './ai-settings-modal';
 import { ImportConfirmModal } from './import-confirm-modal';
 import { ImportReminderModal } from './import-reminder-modal';
 import { PresetModal } from './preset-modal';
+import { useImportSession } from './session';
 
 /** 导入模式选项:自动直接写入 / 手动弹窗确认 */
 const MODE_OPTIONS = [
   { value: true, label: '自动导入' },
   { value: false, label: '手动确认' },
 ] as const;
-
-/** 已选图片的展示信息(原始 uri 供预览,提取阶段再压缩转 base64) */
-interface PickedImage {
-  uri: string;
-  width: number;
-  height: number;
-}
 
 /** 同时识别的最大图片数:多图一次全发容易被服务商限流,内存也会暴涨 */
 const MAX_CONCURRENT_EXTRACTIONS = 3;
@@ -83,26 +77,26 @@ function dedupeTasks(tasks: ExtractedTask[]): ExtractedTask[] {
 export function TaskImportScreen() {
   const { settings, updateSettings } = useAiSettings();
   const { addTask } = useTasks();
-  const [images, setImages] = useState<PickedImage[]>([]);
+  const {
+    images,
+    setImages,
+    error,
+    setError,
+    importNote,
+    setImportNote,
+    extracting,
+    setExtracting,
+    result,
+    setResult,
+    resultOpen,
+    setResultOpen,
+    abortRef,
+  } = useImportSession();
   const [previewIndex, setPreviewIndex] = useState(0);
   const previewRef = useRef<ScrollViewInstance>(null);
-  // 进行中的识别请求,取消时统一中断
-  const abortRef = useRef<AbortController | null>(null);
-  // 离开模块(组件卸载)时终止识别,避免请求在后台继续跑
-  useEffect(
-    () => () => {
-      abortRef.current?.abort();
-    },
-    [],
-  );
   const { width: windowWidth } = useWindowDimensions();
   // 预览区宽度:先按窗口估算,布局完成后用实际宽度校正(避免滚动条/内边距造成错位)
   const [previewWidth, setPreviewWidth] = useState(Math.max(1, windowWidth - 32));
-  const [error, setError] = useState('');
-  const [importNote, setImportNote] = useState('');
-  const [extracting, setExtracting] = useState(false);
-  const [result, setResult] = useState<ExtractedTask[]>([]);
-  const [resultOpen, setResultOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -136,7 +130,7 @@ export function TaskImportScreen() {
       clearTimeout(timer);
       noticesOpacity.stopAnimation();
     };
-  }, [error, importNote, noticesOpacity]);
+  }, [error, importNote, noticesOpacity, setError, setImportNote]);
 
   /** 从相册选图:支持多选,整批替换当前已选图片 */
   const pickFromLibrary = async () => {

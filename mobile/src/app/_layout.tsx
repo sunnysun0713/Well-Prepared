@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AiSettingsProvider } from '@/ai/settings';
 import { ReminderOptionsProvider } from '@/data/reminder-options';
 import { TasksProvider } from '@/data/tasks-context';
+import { ImportSessionProvider } from '@/modules/task-import/session';
 import { ensureNotificationChannel } from '@/notifications';
 
 export default function RootLayout() {
@@ -16,11 +17,13 @@ export default function RootLayout() {
     <ReminderOptionsProvider>
       <TasksProvider>
         <AiSettingsProvider>
-          <StatusBar style="dark" />
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="module-manager" options={{ title: '管理模块' }} />
-          </Stack>
+          <ImportSessionProvider>
+            <StatusBar style="dark" />
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="module-manager" options={{ title: '管理模块' }} />
+            </Stack>
+          </ImportSessionProvider>
         </AiSettingsProvider>
       </TasksProvider>
     </ReminderOptionsProvider>
