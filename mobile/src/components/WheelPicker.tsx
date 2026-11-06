@@ -146,6 +146,8 @@ export function WheelPicker({
 
   // 每个下标一份稳定回调,配合 WheelItem memo 让滚动时未变化的项零重渲染
   const pressAt = useMemo(() => options.map((_, i) => () => pick(i)), [options, pick]);
+  // 选项变少(如 31 日 → 28 日)时把高亮夹到最后一个有效项,避免无选中项
+  const activeIndex = Math.min(selected, options.length - 1);
 
   return (
     <View style={[styles.window, { width, height: visibleCount * itemHeight }]}>
@@ -179,7 +181,7 @@ export function WheelPicker({
           <WheelItem
             key={opt}
             option={opt}
-            active={i === selected}
+            active={i === activeIndex}
             itemHeight={itemHeight}
             onPress={pressAt[i]}
           />

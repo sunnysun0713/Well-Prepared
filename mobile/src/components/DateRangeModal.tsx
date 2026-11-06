@@ -57,16 +57,19 @@ export function DateRangeModal({
     }
   }
 
-  // 年份范围随当前年份生成,并覆盖已有任务的日期
+  // 年份范围按「今天」和打开时的初始日期固定,滚动过程中不变化;
+  // 否则滚到边界时数组会整体前移,导致滚轮显示与上方日期错位
+  const initialStartYear = (parseDateKey(initialStartKey) ?? today).getFullYear();
+  const initialEndYear = (parseDateKey(initialEndKey) ?? today).getFullYear();
   const minYear = Math.min(
     today.getFullYear() - MIN_YEARS_BEFORE,
-    startY,
-    endY,
+    initialStartYear,
+    initialEndYear,
   );
   const maxYear = Math.max(
     today.getFullYear() + MAX_YEARS_AFTER,
-    startY,
-    endY,
+    initialStartYear,
+    initialEndYear,
   );
   const years = useMemo(
     () => Array.from({ length: maxYear - minYear + 1 }, (_, i) => `${minYear + i}年`),
@@ -170,7 +173,7 @@ export function DateRangeModal({
                 visibleCount={3}
               />
               <WheelPicker
-                key={`${visible}-start-day-${startDays}`}
+                key={`${visible}-start-day`}
                 options={startDayOptions}
                 value={startDayIdx}
                 onChange={changeStartDay}
@@ -210,7 +213,7 @@ export function DateRangeModal({
                 visibleCount={3}
               />
               <WheelPicker
-                key={`${visible}-end-day-${endDays}`}
+                key={`${visible}-end-day`}
                 options={endDayOptions}
                 value={endDayIdx}
                 onChange={changeEndDay}
