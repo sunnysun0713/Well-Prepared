@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -94,6 +95,7 @@ export function AddTaskModal({
   const [title, setTitle] = useState(source?.title ?? '');
   const [note, setNote] = useState(source?.note ?? '');
   const [noteOpen, setNoteOpen] = useState(false);
+  const [noteFocused, setNoteFocused] = useState(false);
   const [startTime, setStartTime] = useState(source?.startTime ?? '09:00');
   const [endTime, setEndTime] = useState(source?.endTime ?? '09:30');
   const [remind, setRemind] = useState<number | null>(source?.remindAdvanceMinutes ?? null);
@@ -144,6 +146,7 @@ export function AddTaskModal({
       setTimeOpen(false);
       setDateOpen(false);
       setNoteOpen(false);
+      setNoteFocused(false);
       setError('');
       setConfirmDelete(false);
     }
@@ -313,10 +316,17 @@ export function AddTaskModal({
           />
 
           <Text style={styles.label}>备注</Text>
-          <View style={styles.noteField}>
+          <View
+            style={[
+              styles.noteField,
+              noteFocused && Platform.OS === 'web' && styles.noteFieldFocused,
+            ]}
+          >
             <TextInput
               value={note}
               onChangeText={setNote}
+              onFocus={() => setNoteFocused(true)}
+              onBlur={() => setNoteFocused(false)}
               style={styles.noteInput}
               placeholder="添加备注(可选)"
               placeholderTextColor="#9CA3AF"
@@ -582,6 +592,15 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     fontSize: 15,
     color: '#1F2937',
+    // 去掉浏览器给内层输入框画的方形焦点框,焦点框统一由外层备注框显示
+    outlineStyle: 'solid',
+    outlineWidth: 0,
+    outlineColor: 'transparent',
+  },
+  noteFieldFocused: {
+    outlineWidth: 2,
+    outlineColor: '#101010',
+    outlineStyle: 'solid',
   },
   noteDivider: {
     width: 1,
