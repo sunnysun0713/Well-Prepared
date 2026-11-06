@@ -259,8 +259,10 @@ export function AddTaskModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+      <View style={styles.backdrop}>
+        {/* 遮罩是卡片的兄弟层:在输入框里拖选文字、拖出卡片外松手也不会误触关闭 */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.card}>
           <Text style={styles.title}>{editTask ? '任务设置' : '新增任务'}</Text>
           {progressText ? <Text style={styles.progress}>{progressText}</Text> : null}
 
@@ -434,8 +436,8 @@ export function AddTaskModal({
             )
           ) : null}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
 
       <DateRangeModal
         visible={dateOpen}
